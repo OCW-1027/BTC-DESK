@@ -1,0 +1,79 @@
+name: BTC Desk
+
+on:
+  schedule:
+    # 4시간 간격. 분(minute)을 18로 두어 정시 큐 혼잡을 회피
+    - cron: "18 0,4,8,12,16,20 * * *"
+  workflow_dispatch:
+  # TradingView 웹훅 -> Cloudflare Worker -> 여기로 도달
+  repository_dispatch:
+    types: [tv-alert]
+
+# Pages 배포 락 경합 방지: 실행 중인 작업을 취소하지 않고 순차 대기
+concurrency:
+  group: btc-desk-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 표준 라이브러리만 사용하므로 pip install 없음
+
+      - name: 알림 이벤트 기록
+        if: github.event_name == 'repository_dispatch'
+        env:
+          TV_EVENT: ${{ toJSON(github.event.client_payload) }}
+        run: python record_alert.py
+
+      - name: 데이터 수집
+        run: python fetch_btc.py
+
+      - name: 페이지 생성
+        run: python build_page.py
+
+      - name: 산출물 검증
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+          m = json.load(open("data/latest.json", encoding="utf-8"))
+          px = m["price"]["last"]
+          assert px and 1000 < px < 10_000_000, f"가격 이상: {px}"
+          assert m["signals"]["items"], "시그널 비어있음"
+          size = os.path.getsize("public/index.html")
+          assert size > 5000, f"HTML 크기 이상: {size}"
+          print(f"검증 통과: {px:,.0f} USD / 시그널 {len(m['signals']['items'])}개 / {size:,}B")
+          EOF
+
+      - name: 스냅샷 커밋
+        run: |
+          git config user.name  "btc-desk-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "data: $(date -u +'%Y-%m-%d %H:%MZ') snapshot"
+          git push
+
+      - name: gh-pages 배포
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+
+      - name: 텔레그램 브리프 (선택)
+        if: env.TG_TOKEN != ''
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT }}
+        run: python brief.py

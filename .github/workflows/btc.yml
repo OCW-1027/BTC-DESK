@@ -2,8 +2,11 @@ name: BTC Desk
 
 on:
   schedule:
-    # 4시간 간격. 분(minute)을 18로 두어 정시 큐 혼잡을 회피
+    # 4시간 간격 지표 갱신. UTC 기준 -> JST 01:18/05:18/09:18/13:18/17:18/21:18
+    # 분(minute)을 18로 두어 정시 큐 혼잡을 회피
     - cron: "18 0,4,8,12,16,20 * * *"
+    # 아침 브리프. UTC 22:00 = 다음날 JST 07:00
+    - cron: "0 22 * * *"
   workflow_dispatch:
   # TradingView 웹훅 -> Cloudflare Worker -> 여기로 도달
   repository_dispatch:
@@ -71,9 +74,17 @@ jobs:
           publish_dir: ./public
           publish_branch: gh-pages
 
-      - name: 텔레그램 브리프 (선택)
-        if: env.TG_TOKEN != ''
+      # 아침 브리프(JST 07:00) / 웹훅 알림 / 수동 실행 시에만 발송.
+      # 4시간 정기 갱신마다 보내면 하루 6번이라 알림 피로가 생긴다.
+      - name: 텔레그램 브리프
+        if: >-
+          env.TG_TOKEN != '' &&
+          (github.event.schedule == '0 22 * * *' ||
+           github.event_name == 'repository_dispatch' ||
+           github.event_name == 'workflow_dispatch')
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT: ${{ secrets.TG_CHAT }}
+          PAGE_URL: https://ocw-1027.github.io/BTC-DESK/
+          BRIEF_KIND: ${{ github.event.schedule == '0 22 * * *' && 'morning' || 'adhoc' }}
         run: python brief.py

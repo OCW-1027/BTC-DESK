@@ -122,6 +122,10 @@ def build():
         alerts_card = ""
 
     px_json = json.dumps(px)
+    levels_json = json.dumps({
+        "bmsb_low": l["bull_band_low"], "bmsb_high": l["bull_band_high"],
+        "sma_50w": l.get("sma_50w"), "sma200": m["ma"]["sma200"],
+    })
     spark = json.dumps([[x["t"], x["c"]] for x in m["ohlc"]])
     fund_hist = json.dumps(fd.get("hist", []))
 
@@ -148,7 +152,21 @@ header{{display:flex;justify-content:space-between;align-items:center;margin-bot
 .hero .chg{{font-size:15px;font-variant-numeric:tabular-nums}}
 .badge{{margin-left:auto;padding:7px 14px;border-radius:7px;font-weight:700;font-size:13px}}
 .badge.u{{background:#0f5132;color:#7ee2a8}} .badge.d{{background:#5c1a1a;color:#ff9d9d}} .badge.n{{background:#30363d;color:#c9d1d9}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;align-items:start}}
+.chartcard{{grid-column:1/-1}}
+.sigcard{{grid-column:span 2}}
+@media(max-width:940px){{.sigcard{{grid-column:1/-1}}}}
+.chead{{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}}
+.chead h2{{margin:0}}
+.rng{{display:flex;gap:3px}}
+.rng button{{background:#161b22;border:1px solid #30363d;color:#8b949e;font-size:10.5px;
+  padding:3px 9px;border-radius:5px;cursor:pointer}}
+.rng button.on{{background:#1f6feb;color:#fff;border-color:#1f6feb}}
+.clegend{{margin-left:auto;font-size:10.5px;color:#6e7681;display:flex;align-items:center;gap:7px}}
+.clegend i{{width:9px;height:3px;border-radius:2px;display:inline-block;margin-right:3px}}
+#chartbox{{width:100%}}
+#chartbox svg{{width:100%;height:auto;display:block}}
+@media(max-width:560px){{.clegend{{display:none}}}}
 .card{{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:13px}}
 .card h2{{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:.6px;margin-bottom:9px;font-weight:600}}
 table{{width:100%;border-collapse:collapse;font-size:13px}}
@@ -160,7 +178,7 @@ tr.res td{{color:#ffa198}} tr.sup td{{color:#7ee2a8}}
 tr.now td{{background:#1f6feb22;color:#79c0ff;font-size:12px;padding:6px 3px;text-align:center}}
 .kv{{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d;font-size:13px}}
 .kv:last-child{{border-bottom:0}} .kv span:last-child{{font-variant-numeric:tabular-nums}}
-canvas{{width:100%!important;height:150px!important}}
+#c2 svg{{width:100%;height:80px;display:block;margin-top:6px}}
 .live{{font-size:10.5px;color:#6e7681;margin-top:3px;display:flex;align-items:center;gap:5px}}
 .dot{{width:6px;height:6px;border-radius:50%;background:#6e7681;display:inline-block}}
 .dot.on{{background:#3fb950;animation:pulse 2s infinite}}
@@ -198,8 +216,23 @@ footer{{color:#484f58;font-size:10.5px;margin-top:16px;text-align:center;line-he
 
 <div class="grid">
 
-<div class="card"><h2 data-ko="{T['chart']['ko']}" data-jp="{T['chart']['jp']}">{T['chart']['ko']}</h2>
-  <canvas id="c1"></canvas></div>
+<div class="card chartcard">
+  <div class="chead">
+    <h2 data-ko="가격 추이" data-jp="価格推移">가격 추이</h2>
+    <div class="rng">
+      <button data-d="30" onclick="setRange(30)">30D</button>
+      <button data-d="90" onclick="setRange(90)">90D</button>
+      <button data-d="180" class="on" onclick="setRange(180)">180D</button>
+    </div>
+    <span class="clegend">
+      <i style="background:#58a6ff"></i>가격
+      <i style="background:rgba(45,212,191,.45)"></i>BMSB
+      <i style="background:#f0883e"></i>50W
+      <i style="background:#a371f7"></i>200D
+    </span>
+  </div>
+  <div id="chartbox"></div>
+</div>
 
 <div class="card"><h2 data-ko="{T['levels']['ko']}" data-jp="{T['levels']['jp']}">{T['levels']['ko']}</h2>
   <table>{lv_rows}</table></div>
@@ -231,10 +264,10 @@ footer{{color:#484f58;font-size:10.5px;margin-top:16px;text-align:center;line-he
     <span>{f(mo['rv30'],1,'%')}</span></div>
   <div class="kv"><span data-ko="52주 위치" data-jp="52週レンジ位置">52주 위치</span>
     <span>{f(l['pos_52w'],0,'%')}</span></div>
-  <canvas id="c2" style="margin-top:8px"></canvas>
+  <div id="c2" style="margin-top:8px"></div>
 </div>
 
-<div class="card" style="grid-column:1/-1"><h2 data-ko="{T['signals']['ko']}" data-jp="{T['signals']['jp']}">{T['signals']['ko']}</h2>
+<div class="card sigcard"><h2 data-ko="{T['signals']['ko']}" data-jp="{T['signals']['jp']}">{T['signals']['ko']}</h2>
   <table>{sig_rows}</table></div>
 
 {alerts_card}
@@ -249,7 +282,6 @@ footer{{color:#484f58;font-size:10.5px;margin-top:16px;text-align:center;line-he
   Auto-generated · {m['generated_at_utc'][:19]}Z
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 function setLang(L){{
   document.querySelectorAll('[data-ko]').forEach(function(e){{e.textContent=e.getAttribute('data-'+L)}});
@@ -260,23 +292,106 @@ function setLang(L){{
 }}
 try{{var sv=localStorage.getItem('btcdesk_lang'); if(sv)setLang(sv)}}catch(e){{}}
 
-var OPT={{responsive:true,maintainAspectRatio:false,
-  plugins:{{legend:{{display:false}}}},
-  scales:{{x:{{display:false}},y:{{ticks:{{color:'#6e7681',font:{{size:9}}}},grid:{{color:'#21262d'}}}}}},
-  elements:{{point:{{radius:0}}}}}};
-
 var S={spark};
-new Chart(document.getElementById('c1'),{{type:'line',
-  data:{{labels:S.map(function(x){{return new Date(x[0]).toISOString().slice(5,10)}}),
-    datasets:[{{data:S.map(function(x){{return x[1]}}),borderColor:'#1f6feb',borderWidth:1.6,
-      fill:true,backgroundColor:'rgba(31,111,235,.12)',tension:.15}}]}},options:OPT}});
+var LV={levels_json};
+var RANGE=180;
+
+function setRange(d){{
+  RANGE=d;
+  var bs=document.querySelectorAll('.rng button');
+  for(var i=0;i<bs.length;i++) bs[i].className = (+bs[i].getAttribute('data-d')===d)?'on':'';
+  drawChart();
+}}
+
+function drawChart(){{
+  var box=document.getElementById('chartbox');
+  if(!box||!S.length) return;
+  var data=S.slice(Math.max(0,S.length-RANGE));
+  // 컨테이너 실제 폭으로 그려 텍스트 왜곡을 막는다
+  var W=Math.max(320,Math.round(box.clientWidth||1000));
+  var narrow=W<560;
+  var H=narrow?200:270, PL=8, PR=narrow?48:62, PT=10, PB=20;
+  var n=data.length;
+  var lo=Infinity,hi=-Infinity,i,v;
+  for(i=0;i<n;i++){{v=data[i][1]; if(v<lo)lo=v; if(v>hi)hi=v;}}
+  // 레벨이 범위에 가까우면 포함
+  [LV.bmsb_low,LV.bmsb_high,LV.sma_50w,LV.sma200].forEach(function(x){{
+    if(x==null) return;
+    if(x>lo*0.90&&x<hi*1.10){{ if(x<lo)lo=x; if(x>hi)hi=x; }}
+  }});
+  var m=(hi-lo)*0.07||1; lo-=m; hi+=m;
+  var X=function(i){{return PL+(W-PL-PR)*(n>1?i/(n-1):0.5)}};
+  var Y=function(v){{return PT+(H-PT-PB)*(1-(v-lo)/(hi-lo))}};
+  var FS=narrow?9:11;
+  var out='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">';
+
+  // 가로 눈금
+  for(i=0;i<=4;i++){{
+    var gv=lo+(hi-lo)*i/4, gy=Y(gv);
+    out+='<line x1="'+PL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+gy.toFixed(1)+'" stroke="#21262d" stroke-width="1"/>';
+    out+='<text x="'+(W-PR+6)+'" y="'+(gy+3.5).toFixed(1)+'" fill="#6e7681" font-size="'+FS+'">'+Math.round(gv).toLocaleString()+'</text>';
+  }}
+
+  // BMSB 밴드
+  if(LV.bmsb_low!=null&&LV.bmsb_high!=null&&LV.bmsb_high>lo&&LV.bmsb_low<hi){{
+    var y1=Y(Math.min(hi,LV.bmsb_high)),y2=Y(Math.max(lo,LV.bmsb_low));
+    out+='<rect x="'+PL+'" y="'+y1.toFixed(1)+'" width="'+(W-PL-PR)+'" height="'+Math.max(0,y2-y1).toFixed(1)+'" fill="rgba(45,212,191,.13)"/>';
+  }}
+
+  // 레벨 라인
+  function lvline(v,col,lbl){{
+    if(v==null||v<lo||v>hi) return '';
+    var y=Y(v);
+    return '<line x1="'+PL+'" y1="'+y.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+y.toFixed(1)+
+           '" stroke="'+col+'" stroke-width="1" stroke-dasharray="5 4" opacity=".75"/>'+
+           '<text x="'+(PL+4)+'" y="'+(y-4).toFixed(1)+'" fill="'+col+'" font-size="'+(FS-0.5)+'">'+lbl+'</text>';
+  }}
+  out+=lvline(LV.sma_50w,'#f0883e','50W SMA');
+  out+=lvline(LV.sma200,'#a371f7','200D SMA');
+
+  // 가격 영역 + 라인
+  var dl='';
+  for(i=0;i<n;i++) dl+=(i?'L':'M')+X(i).toFixed(1)+','+Y(data[i][1]).toFixed(1);
+  out+='<path d="'+dl+'L'+X(n-1).toFixed(1)+','+(H-PB)+'L'+X(0).toFixed(1)+','+(H-PB)+'Z" fill="rgba(88,166,255,.13)"/>';
+  out+='<path d="'+dl+'" stroke="#58a6ff" stroke-width="1.8" fill="none" stroke-linejoin="round"/>';
+
+  // 현재가 마커
+  var lastV=data[n-1][1],ly=Y(lastV);
+  out+='<circle cx="'+X(n-1).toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="3" fill="#58a6ff"/>';
+  out+='<rect x="'+(W-PR+2)+'" y="'+(ly-8).toFixed(1)+'" width="'+(PR-4)+'" height="16" rx="3" fill="#1f6feb"/>';
+  out+='<text x="'+(W-PR+6)+'" y="'+(ly+3.5).toFixed(1)+'" fill="#fff" font-size="'+FS+'" font-weight="700">'+Math.round(lastV).toLocaleString()+'</text>';
+
+  // 날짜 라벨
+  [0,Math.floor(n/2),n-1].forEach(function(idx){{
+    if(idx<0||idx>=n) return;
+    var d=new Date(data[idx][0]);
+    var lb=(d.getMonth()+1)+'/'+d.getDate();
+    out+='<text x="'+X(idx).toFixed(1)+'" y="'+(H-5)+'" fill="#6e7681" font-size="'+FS+'" text-anchor="'+(idx===0?'start':(idx===n-1?'end':'middle'))+'">'+lb+'</text>';
+  }});
+  out+='</svg>';
+  box.innerHTML=out;
+}}
+drawChart();
+var _rt;
+window.addEventListener('resize',function(){{clearTimeout(_rt);_rt=setTimeout(drawChart,180);}});
 
 var F={fund_hist};
 if(F.length){{
-  new Chart(document.getElementById('c2'),{{type:'bar',
-    data:{{labels:F.map(function(_,i){{return i}}),
-      datasets:[{{data:F,backgroundColor:F.map(function(v){{return v>=0?'#3fb95099':'#f8514999'}})}}]}},
-    options:OPT}});
+  var fb=document.getElementById('c2');
+  if(fb){{
+    var W2=300,H2=80,mx=0;
+    for(var i=0;i<F.length;i++) mx=Math.max(mx,Math.abs(F[i]));
+    mx=mx||1;
+    var o='<svg viewBox="0 0 '+W2+' '+H2+'" preserveAspectRatio="none">';
+    var zy=H2/2, bw=W2/F.length;
+    o+='<line x1="0" y1="'+zy+'" x2="'+W2+'" y2="'+zy+'" stroke="#30363d" stroke-width="1"/>';
+    for(i=0;i<F.length;i++){{
+      var hgt=Math.abs(F[i])/mx*(H2/2-2);
+      var y=F[i]>=0?zy-hgt:zy;
+      o+='<rect x="'+(i*bw).toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+Math.max(0.8,bw-0.6).toFixed(2)+'" height="'+hgt.toFixed(2)+'" fill="'+(F[i]>=0?'#3fb95099':'#f8514999')+'"/>';
+    }}
+    fb.outerHTML='<div id="c2">'+o+'</svg></div>';
+  }}
 }}
 
 // ── 실시간 계층: OKX WebSocket (실패 시 REST 폴링으로 폴백)

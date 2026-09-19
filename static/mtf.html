@@ -23,6 +23,8 @@ h1{font-size:16px;font-weight:700}
 button{background:var(--surface2);border:1px solid var(--line);color:var(--muted);
   padding:5px 11px;border-radius:6px;cursor:pointer;font-size:11.5px}
 button:hover{border-color:var(--amber);color:var(--amber)}
+.lang{display:inline-flex;gap:4px}
+.lang button.on{background:var(--amber);color:#2a1f05;border-color:var(--amber)}
 
 .hero{background:var(--surface);border:1px solid var(--line);border-radius:10px;
   padding:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:12px}
@@ -71,7 +73,8 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
 <header>
   <h1>₿ BTC 멀티 타임프레임</h1>
   <span class="dot" id="dot"></span>
-  <button onclick="refresh()">새로고침</button>
+  <button onclick="refresh()" id="btnRefresh">새로고침</button>
+  <span class="lang"><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></span>
   <span class="meta" id="meta">불러오는 중…</span>
 </header>
 
@@ -81,17 +84,19 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
     <div class="chg" id="chg">—</div>
   </div>
   <div class="cons">
-    <div class="lbl">타임프레임 종합</div>
+    <div class="lbl" id="consLbl">타임프레임 종합</div>
     <div class="val neutral" id="cons">—</div>
   </div>
 </div>
 
 <div class="wrap">
-  <h2>타임프레임 정렬 매트릭스</h2>
+  <h2 id="h2matrix">타임프레임 정렬 매트릭스</h2>
   <table>
     <thead><tr>
-      <th>TF</th><th>종가</th><th>점수</th><th>일목</th><th>전환/기준</th>
-      <th>리본</th><th>RSI</th><th>MACD-H</th><th>%B</th><th>밴드폭</th><th>ATR%</th>
+      <th id="thTF">TF</th><th id="thClose">종가</th><th id="thScore">점수</th>
+      <th id="thIchi">일목</th><th id="thTK">전환/기준</th><th id="thRib">리본</th>
+      <th id="thRsi">RSI</th><th id="thMacd">MACD-H</th><th id="thB">%B</th>
+      <th id="thBw">밴드폭</th><th id="thAtr">ATR%</th>
     </tr></thead>
     <tbody id="matrix"></tbody>
   </table>
@@ -100,8 +105,8 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
 <div class="grid" id="cards"></div>
 
 <footer>
-  데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다<br>
-  정보 제공 목적이며 투자 자문이 아닙니다. 파생상품은 원금 전액 손실이 가능합니다.
+  <span id="foot1">데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다</span><br>
+  <span id="foot2">정보 제공 목적이며 투자 자문이 아닙니다. 파생상품은 원금 전액 손실이 가능합니다.</span>
 </footer>
 
 <script src="indicators.js"></script>
@@ -120,8 +125,59 @@ function sg(v, d, suf) {
 function cl(v) { return v == null ? 'n' : (v > 0 ? 'u' : (v < 0 ? 'd' : 'n')); }
 function stat(c) { document.getElementById('dot').className = 'dot ' + c; }
 
-var ICHI_KO = { above: '구름 위', below: '구름 아래', inside: '구름 안' };
-var RIB_KO = { bull: '정배열', bear: '역배열', mixed: '혼조' };
+var LANG = 'ko';
+try { LANG = localStorage.getItem('btcmtf_lang') || 'ko'; } catch (e) {}
+
+var ICHI = {
+  ko: { above: '구름 위', below: '구름 아래', inside: '구름 안' },
+  jp: { above: '雲の上',  below: '雲の下',    inside: '雲の中' }
+};
+var RIB = {
+  ko: { bull: '정배열', bear: '역배열', mixed: '혼조' },
+  jp: { bull: '正配列', bear: '逆配列', mixed: '混在' }
+};
+var T = {
+  ko: { title: '₿ BTC 멀티 타임프레임', refresh: '새로고침', loading: '불러오는 중…',
+        calc: '계산 중…', fail: '실패: ', cons: '타임프레임 종합',
+        thTF:'TF', thClose:'종가', thScore:'점수', thIchi:'일목', thTK:'전환/기준',
+        thRib:'리본', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'밴드폭', thAtr:'ATR%',
+        matrix:'타임프레임 정렬 매트릭스',
+        cloud:'일목 구름', bull:'양운', bear:'음운',
+        bb:'볼린저 상/중/하', macdSig:'MACD / 시그널',
+        sl:'ATR 손절 (롱)', tp:'TP1 / TP2 / TP3',
+        dayRsi:'일봉 RSI', pctb:'볼린저 %B', basis:' JST 기준',
+        foot1:'데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다',
+        foot2:'정보 제공 목적이며 투자 자문이 아닙니다. 파생상품은 원금 전액 손실이 가능합니다.' },
+  jp: { title: '₿ BTC マルチタイムフレーム', refresh: '更新', loading: '読み込み中…',
+        calc: '計算中…', fail: '失敗: ', cons: 'タイムフレーム総合',
+        thTF:'TF', thClose:'終値', thScore:'スコア', thIchi:'一目', thTK:'転換/基準',
+        thRib:'リボン', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'バンド幅', thAtr:'ATR%',
+        matrix:'タイムフレーム整列マトリクス',
+        cloud:'一目 雲', bull:'陽転', bear:'陰転',
+        bb:'ボリンジャー 上/中/下', macdSig:'MACD / シグナル',
+        sl:'ATR 損切り (ロング)', tp:'TP1 / TP2 / TP3',
+        dayRsi:'日足 RSI', pctb:'ボリンジャー %B', basis:' JST 基準',
+        foot1:'データ OKX · ブラウザで直接計算するため常に最新です',
+        foot2:'情報提供目的であり投資助言ではありません。デリバティブは元本全損の可能性があります。' }
+};
+function t(k) { return T[LANG][k]; }
+
+function setLang(L) {
+  LANG = L;
+  try { localStorage.setItem('btcmtf_lang', L); } catch (e) {}
+  document.documentElement.lang = (L === 'ko' ? 'ko' : 'ja');
+  document.getElementById('bko').className = (L === 'ko' ? 'on' : '');
+  document.getElementById('bjp').className = (L === 'jp' ? 'on' : '');
+  document.querySelector('h1').textContent = t('title');
+  document.getElementById('btnRefresh').textContent = t('refresh');
+  document.getElementById('consLbl').textContent = t('cons');
+  document.getElementById('h2matrix').textContent = t('matrix');
+  document.getElementById('foot1').textContent = t('foot1');
+  document.getElementById('foot2').textContent = t('foot2');
+  ['thTF','thClose','thScore','thIchi','thTK','thRib','thRsi','thMacd','thB','thBw','thAtr']
+    .forEach(function (k) { var e = document.getElementById(k); if (e) e.textContent = t(k); });
+  if (LAST) render(LAST);
+}
 
 function render(results) {
   LAST = results;
@@ -136,8 +192,8 @@ function render(results) {
     var c = day.data, prev = null;
     // 일봉 기준 등락은 SMA 대신 직전 종가가 필요하므로 생략하고 %B 로 대체 표기
     document.getElementById('chg').innerHTML =
-      '일봉 RSI <b>' + c.rsi.toFixed(1) + '</b> · ' +
-      '볼린저 %B <b>' + (c.boll ? c.boll.pctB.toFixed(2) : '—') + '</b>';
+      t('dayRsi') + ' <b>' + c.rsi.toFixed(1) + '</b> · ' +
+      t('pctb') + ' <b>' + (c.boll ? c.boll.pctB.toFixed(2) : '—') + '</b>';
   }
 
   var cons = I.consensus(results);
@@ -149,19 +205,19 @@ function render(results) {
   var rows = '';
   results.forEach(function (r) {
     if (!r.ok) {
-      rows += '<tr><td>' + r.ko + '</td><td colspan="10" class="n">' + r.error + '</td></tr>';
+      rows += '<tr><td>' + (LANG === 'ko' ? r.ko : r.jp) + '</td><td colspan="10" class="n">' + r.error + '</td></tr>';
       return;
     }
     var a = r.data, s = I.scoreTF(a), ic = a.ichimoku, b = a.boll, rb = a.ribbon;
     rows += '<tr>' +
-      '<td>' + r.ko + '</td>' +
+      '<td>' + (LANG === 'ko' ? r.ko : r.jp) + '</td>' +
       '<td>' + n(a.close) + '</td>' +
       '<td class="sc ' + cl(s.score) + '">' + (s.score > 0 ? '+' : '') + s.score + '</td>' +
-      '<td>' + (ic ? '<span class="pill ' + ic.pos + '">' + ICHI_KO[ic.pos] + '</span>' : '—') + '</td>' +
+      '<td>' + (ic ? '<span class="pill ' + ic.pos + '">' + ICHI[LANG][ic.pos] + '</span>' : '—') + '</td>' +
       '<td class="' + (ic && ic.tenkan > ic.kijun ? 'u' : 'd') + '">' +
         (ic ? n(ic.tenkan) + ' / ' + n(ic.kijun) : '—') + '</td>' +
       '<td class="' + (rb.aligned === 'bull' ? 'u' : (rb.aligned === 'bear' ? 'd' : 'n')) + '">' +
-        RIB_KO[rb.aligned] + ' ' + rb.aboveCount + '/' + rb.total + '</td>' +
+        RIB[LANG][rb.aligned] + ' ' + rb.aboveCount + '/' + rb.total + '</td>' +
       '<td class="' + (a.rsi >= 70 ? 'd' : (a.rsi <= 30 ? 'u' : '')) + '">' + a.rsi.toFixed(1) + '</td>' +
       '<td class="' + cl(a.macd ? a.macd.hist : null) + '">' + (a.macd ? sg(a.macd.hist, 0) : '—') + '</td>' +
       '<td>' + (b ? b.pctB.toFixed(2) : '—') + '</td>' +
@@ -184,37 +240,38 @@ function render(results) {
              ' <span class="' + cl(d) + '">' + sg(d, 2, '%') + '</span></span></div>';
     }).join('');
 
-    cards += '<div class="card"><h2>' + r.ko + '</h2>' +
+    cards += '<div class="card"><h2>' + (LANG === 'ko' ? r.ko : r.jp) + '</h2>' +
       ribRows +
-      (ic ? '<div class="kv"><span>일목 구름</span><span>' + n(ic.cloudLow) + '~' + n(ic.cloudHigh) +
-            ' <span class="' + (ic.bullCloud ? 'u' : 'd') + '">' + (ic.bullCloud ? '양운' : '음운') +
+      (ic ? '<div class="kv"><span>' + t('cloud') + '</span><span>' + n(ic.cloudLow) + '~' + n(ic.cloudHigh) +
+            ' <span class="' + (ic.bullCloud ? 'u' : 'd') + '">' + (ic.bullCloud ? t('bull') : t('bear')) +
             '</span></span></div>' : '') +
-      (b ? '<div class="kv"><span>볼린저 상/중/하</span><span>' + n(b.upper) + ' / ' + n(b.mid) +
+      (b ? '<div class="kv"><span>' + t('bb') + '</span><span>' + n(b.upper) + ' / ' + n(b.mid) +
            ' / ' + n(b.lower) + '</span></div>' +
            '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, b.pctB * 100)) + '%"></i></div>' : '') +
-      (a.macd ? '<div class="kv"><span>MACD / 시그널</span><span>' + sg(a.macd.macd, 0) + ' / ' +
+      (a.macd ? '<div class="kv"><span>' + t('macdSig') + '</span><span>' + sg(a.macd.macd, 0) + ' / ' +
                 sg(a.macd.signal, 0) + '</span></div>' : '') +
-      (rr ? '<div class="kv"><span>ATR 손절 (롱)</span><span class="d">' + n(rr.longSL) + '</span></div>' +
-            '<div class="kv"><span>TP1 / TP2 / TP3</span><span class="u">' +
+      (rr ? '<div class="kv"><span>' + t('sl') + '</span><span class="d">' + n(rr.longSL) + '</span></div>' +
+            '<div class="kv"><span>' + t('tp') + '</span><span class="u">' +
             rr.tp.map(function (t) { return n(t.price); }).join(' / ') + '</span></div>' : '') +
       '</div>';
   });
   document.getElementById('cards').innerHTML = cards;
 
   document.getElementById('meta').textContent =
-    new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Tokyo' }) + ' JST 기준';
+    new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Tokyo' }) + t('basis');
   stat('on');
 }
 
 function refresh() {
   stat('');
-  document.getElementById('meta').textContent = '계산 중…';
+  document.getElementById('meta').textContent = t('calc');
   I.analyzeAll().then(render).catch(function (e) {
     stat('err');
-    document.getElementById('meta').textContent = '실패: ' + e.message;
+    document.getElementById('meta').textContent = t('fail') + e.message;
   });
 }
 
+setLang(LANG);
 refresh();
 setInterval(function () { if (!document.hidden) refresh(); }, 60000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });

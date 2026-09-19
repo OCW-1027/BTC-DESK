@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC MTF — 멀티 타임프레임 지표</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--line:#30363d;
+  --text:#c9d1d9;--muted:#8b949e;--faint:#6e7681;
+  --up:#3fb950;--down:#f85149;--amber:#ffb224;--blue:#58a6ff;--teal:#2dd4bf;
+}
+body{background:var(--bg);color:var(--text);padding:14px;max-width:1300px;margin:0 auto;
+  font:13px/1.5 -apple-system,"Hiragino Kaku Gothic ProN","Noto Sans KR",sans-serif}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:16px;font-weight:700}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--up);animation:pulse 2s infinite}
+.dot.err{background:var(--down)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.meta{color:var(--faint);font-size:11px;margin-left:auto}
+button{background:var(--surface2);border:1px solid var(--line);color:var(--muted);
+  padding:5px 11px;border-radius:6px;cursor:pointer;font-size:11.5px}
+button:hover{border-color:var(--amber);color:var(--amber)}
+
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:12px}
+.px{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.chg{font-variant-numeric:tabular-nums;font-size:14px}
+.cons{margin-left:auto;text-align:right}
+.cons .lbl{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+.cons .val{font-size:19px;font-weight:800;padding:3px 13px;border-radius:7px;display:inline-block;margin-top:3px}
+.val.bull{background:rgba(63,185,80,.16);color:var(--up)}
+.val.bear{background:rgba(248,81,73,.16);color:var(--down)}
+.val.neutral{background:var(--surface2);color:var(--muted)}
+
+.wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:12px;margin-bottom:12px}
+h2{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;
+  margin-bottom:9px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:860px}
+th{text-align:right;color:var(--faint);font-weight:600;font-size:10.5px;
+  padding:5px 7px;border-bottom:1px solid var(--line);text-transform:uppercase}
+th:first-child{text-align:left}
+td{padding:6px 7px;border-bottom:1px solid #21262d;text-align:right;
+  font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;font-weight:700;color:var(--text)}
+tr:last-child td{border-bottom:0}
+.u{color:var(--up)} .d{color:var(--down)} .n{color:var(--muted)}
+.pill{padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:700}
+.pill.above{background:rgba(63,185,80,.16);color:var(--up)}
+.pill.below{background:rgba(248,81,73,.16);color:var(--down)}
+.pill.inside{background:rgba(255,178,36,.16);color:var(--amber)}
+.sc{font-weight:800;font-size:13px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kv{display:flex;justify-content:space-between;padding:3.5px 0;
+  border-bottom:1px solid #21262d;font-size:12px}
+.kv:last-child{border-bottom:0}
+.kv span:last-child{font-variant-numeric:tabular-nums}
+.bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--blue)}
+footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;line-height:1.7}
+@media(max-width:560px){.px{font-size:25px}.cons{margin-left:0}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>₿ BTC 멀티 타임프레임</h1>
+  <span class="dot" id="dot"></span>
+  <button onclick="refresh()">새로고침</button>
+  <span class="meta" id="meta">불러오는 중…</span>
+</header>
+
+<div class="hero">
+  <div>
+    <div class="px" id="px">—</div>
+    <div class="chg" id="chg">—</div>
+  </div>
+  <div class="cons">
+    <div class="lbl">타임프레임 종합</div>
+    <div class="val neutral" id="cons">—</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h2>타임프레임 정렬 매트릭스</h2>
+  <table>
+    <thead><tr>
+      <th>TF</th><th>종가</th><th>점수</th><th>일목</th><th>전환/기준</th>
+      <th>리본</th><th>RSI</th><th>MACD-H</th><th>%B</th><th>밴드폭</th><th>ATR%</th>
+    </tr></thead>
+    <tbody id="matrix"></tbody>
+  </table>
+</div>
+
+<div class="grid" id="cards"></div>
+
+<footer>
+  데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다<br>
+  정보 제공 목적이며 투자 자문이 아닙니다. 파생상품은 원금 전액 손실이 가능합니다.
+</footer>
+
+<script src="indicators.js"></script>
+<script>
+var I = window.BTCIndicators;
+var LAST = null;
+
+function n(v, d) {
+  if (v == null || !isFinite(v)) return '—';
+  return v.toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+}
+function sg(v, d, suf) {
+  if (v == null || !isFinite(v)) return '—';
+  return (v > 0 ? '+' : '') + v.toFixed(d == null ? 2 : d) + (suf || '');
+}
+function cl(v) { return v == null ? 'n' : (v > 0 ? 'u' : (v < 0 ? 'd' : 'n')); }
+function stat(c) { document.getElementById('dot').className = 'dot ' + c; }
+
+var ICHI_KO = { above: '구름 위', below: '구름 아래', inside: '구름 안' };
+var RIB_KO = { bull: '정배열', bear: '역배열', mixed: '혼조' };
+
+function render(results) {
+  LAST = results;
+  var ok = results.filter(function (r) { return r.ok; });
+  if (!ok.length) { stat('err'); return; }
+
+  var day = results.filter(function (r) { return r.key === '1D'; })[0];
+  var px = ok[ok.length - 1].data.close;
+  document.getElementById('px').textContent = '$' + n(px);
+
+  if (day && day.ok) {
+    var c = day.data, prev = null;
+    // 일봉 기준 등락은 SMA 대신 직전 종가가 필요하므로 생략하고 %B 로 대체 표기
+    document.getElementById('chg').innerHTML =
+      '일봉 RSI <b>' + c.rsi.toFixed(1) + '</b> · ' +
+      '볼린저 %B <b>' + (c.boll ? c.boll.pctB.toFixed(2) : '—') + '</b>';
+  }
+
+  var cons = I.consensus(results);
+  var ce = document.getElementById('cons');
+  ce.textContent = (cons.pct > 0 ? '+' : '') + cons.pct.toFixed(0) + '%';
+  ce.className = 'val ' + cons.stance;
+
+  // ── 매트릭스
+  var rows = '';
+  results.forEach(function (r) {
+    if (!r.ok) {
+      rows += '<tr><td>' + r.ko + '</td><td colspan="10" class="n">' + r.error + '</td></tr>';
+      return;
+    }
+    var a = r.data, s = I.scoreTF(a), ic = a.ichimoku, b = a.boll, rb = a.ribbon;
+    rows += '<tr>' +
+      '<td>' + r.ko + '</td>' +
+      '<td>' + n(a.close) + '</td>' +
+      '<td class="sc ' + cl(s.score) + '">' + (s.score > 0 ? '+' : '') + s.score + '</td>' +
+      '<td>' + (ic ? '<span class="pill ' + ic.pos + '">' + ICHI_KO[ic.pos] + '</span>' : '—') + '</td>' +
+      '<td class="' + (ic && ic.tenkan > ic.kijun ? 'u' : 'd') + '">' +
+        (ic ? n(ic.tenkan) + ' / ' + n(ic.kijun) : '—') + '</td>' +
+      '<td class="' + (rb.aligned === 'bull' ? 'u' : (rb.aligned === 'bear' ? 'd' : 'n')) + '">' +
+        RIB_KO[rb.aligned] + ' ' + rb.aboveCount + '/' + rb.total + '</td>' +
+      '<td class="' + (a.rsi >= 70 ? 'd' : (a.rsi <= 30 ? 'u' : '')) + '">' + a.rsi.toFixed(1) + '</td>' +
+      '<td class="' + cl(a.macd ? a.macd.hist : null) + '">' + (a.macd ? sg(a.macd.hist, 0) : '—') + '</td>' +
+      '<td>' + (b ? b.pctB.toFixed(2) : '—') + '</td>' +
+      '<td>' + (b ? b.width.toFixed(2) + '%' : '—') + '</td>' +
+      '<td>' + (a.atr / a.close * 100).toFixed(2) + '%</td>' +
+      '</tr>';
+  });
+  document.getElementById('matrix').innerHTML = rows;
+
+  // ── 타임프레임별 상세 카드
+  var cards = '';
+  results.forEach(function (r) {
+    if (!r.ok) return;
+    var a = r.data, ic = a.ichimoku, b = a.boll, rr = a.rr, rb = a.ribbon;
+    var ribRows = I.RIBBON.map(function (k) {
+      var v = rb[k];
+      if (v == null) return '';
+      var d = (a.close / v - 1) * 100;
+      return '<div class="kv"><span>SMA' + k + '</span><span>' + n(v) +
+             ' <span class="' + cl(d) + '">' + sg(d, 2, '%') + '</span></span></div>';
+    }).join('');
+
+    cards += '<div class="card"><h2>' + r.ko + '</h2>' +
+      ribRows +
+      (ic ? '<div class="kv"><span>일목 구름</span><span>' + n(ic.cloudLow) + '~' + n(ic.cloudHigh) +
+            ' <span class="' + (ic.bullCloud ? 'u' : 'd') + '">' + (ic.bullCloud ? '양운' : '음운') +
+            '</span></span></div>' : '') +
+      (b ? '<div class="kv"><span>볼린저 상/중/하</span><span>' + n(b.upper) + ' / ' + n(b.mid) +
+           ' / ' + n(b.lower) + '</span></div>' +
+           '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, b.pctB * 100)) + '%"></i></div>' : '') +
+      (a.macd ? '<div class="kv"><span>MACD / 시그널</span><span>' + sg(a.macd.macd, 0) + ' / ' +
+                sg(a.macd.signal, 0) + '</span></div>' : '') +
+      (rr ? '<div class="kv"><span>ATR 손절 (롱)</span><span class="d">' + n(rr.longSL) + '</span></div>' +
+            '<div class="kv"><span>TP1 / TP2 / TP3</span><span class="u">' +
+            rr.tp.map(function (t) { return n(t.price); }).join(' / ') + '</span></div>' : '') +
+      '</div>';
+  });
+  document.getElementById('cards').innerHTML = cards;
+
+  document.getElementById('meta').textContent =
+    new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Tokyo' }) + ' JST 기준';
+  stat('on');
+}
+
+function refresh() {
+  stat('');
+  document.getElementById('meta').textContent = '계산 중…';
+  I.analyzeAll().then(render).catch(function (e) {
+    stat('err');
+    document.getElementById('meta').textContent = '실패: ' + e.message;
+  });
+}
+
+refresh();
+setInterval(function () { if (!document.hidden) refresh(); }, 60000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>

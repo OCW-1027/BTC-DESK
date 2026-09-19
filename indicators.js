@@ -168,10 +168,47 @@
     return out;
   }
 
+  // ── 차트용 시계열 ─────────────────────────────────────────
+  // 마지막 N봉에 대해 종가 / 볼린저 상·중·하 / 일목 구름 상·하를 배열로 산출.
+  // 계산은 각 시점까지의 데이터만 사용하므로 미래참조가 없다.
+  function series(h, l, c, N) {
+    N = N || 120;
+    var start = Math.max(20, c.length - N);
+    var out = [];
+    for (var i = start; i < c.length; i++) {
+      var w = c.slice(0, i + 1);
+      var b = bollinger(w);
+      var cl = null, ch = null;
+      if (i >= 78) {
+        var mid = function (n, shift) {
+          var e = i + 1 - shift, st = e - n;
+          if (st < 0) return null;
+          var hi = -Infinity, lo = Infinity;
+          for (var k = st; k < e; k++) {
+            if (h[k] > hi) hi = h[k];
+            if (l[k] < lo) lo = l[k];
+          }
+          return (hi + lo) / 2;
+        };
+        var a26 = (mid(9, 26) + mid(26, 26)) / 2, b26 = mid(52, 26);
+        if (a26 != null && b26 != null) {
+          cl = Math.min(a26, b26); ch = Math.max(a26, b26);
+        }
+      }
+      out.push({
+        c: c[i], h: h[i], l: l[i],
+        bu: b ? b.upper : null, bm: b ? b.mid : null, bl: b ? b.lower : null,
+        cl: cl, ch: ch
+      });
+    }
+    return out;
+  }
+
   // ── 전체 계산 ─────────────────────────────────────────────
   function analyze(h, l, c) {
     return {
       n: c.length,
+      series: series(h, l, c, 120),
       close: c[c.length - 1],
       ribbon: ribbon(c),
       rsi: rsi(c),
@@ -278,7 +315,7 @@
   global.BTCIndicators = {
     sma: sma, ema: ema, rsi: rsi, macd: macd, atr: atr,
     bollinger: bollinger, ichimoku: ichimoku, rrLevels: rrLevels,
-    ribbon: ribbon, analyze: analyze,
+    ribbon: ribbon, analyze: analyze, series: series,
     fetchBar: fetchBar, analyzeAll: analyzeAll,
     scoreTF: scoreTF, consensus: consensus,
     BARS: BARS, RIBBON: RIBBON

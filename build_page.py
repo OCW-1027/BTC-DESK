@@ -138,6 +138,9 @@ body{{background:#0d1117;color:#c9d1d9;font:14px/1.5 -apple-system,"Hiragino Kak
 h1{{font-size:17px;font-weight:700;letter-spacing:-.3px}}
 header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px}}
 .meta{{color:#6e7681;font-size:11px}}
+.lang .mtflink{{background:#161b22;border:1px solid #30363d;color:#ffb224;padding:4px 10px;
+  font-size:11px;border-radius:5px;text-decoration:none;margin-right:6px}}
+.lang .mtflink:hover{{border-color:#ffb224}}
 .lang button{{background:#161b22;border:1px solid #30363d;color:#8b949e;padding:4px 10px;cursor:pointer;font-size:11px;border-radius:5px;margin-left:4px}}
 .lang button.on{{background:#1f6feb;color:#fff;border-color:#1f6feb}}
 .hero{{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px;margin:12px 0;display:flex;gap:24px;align-items:baseline;flex-wrap:wrap}}
@@ -173,7 +176,7 @@ footer{{color:#484f58;font-size:10.5px;margin-top:16px;text-align:center;line-he
 <header>
   <div><h1>₿ BTC Desk</h1>
   <div class="meta">{T['updated']['ko']} {m['generated_at_jst']} · OKX / Deribit / Alternative.me</div></div>
-  <div class="lang"><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></div>
+  <div class="lang"><a class="mtflink" href="mtf.html">멀티 TF ↗</a><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></div>
 </header>
 
 <div class="hero">
@@ -384,6 +387,18 @@ if(F.length){{
         "top_signals": [{"ko": x["ko"], "jp": x["jp"], "score": x["score"]}
                         for x in sorted(sg["items"], key=lambda z: -abs(z["score"]))[:3]],
     }
+    # static/ 자산을 public/ 으로 복사 (mtf.html, indicators.js 등)
+    import shutil
+    pub = os.path.dirname(OUT)
+    os.makedirs(pub, exist_ok=True)
+    st = os.path.join(BASE, "static")
+    if os.path.isdir(st):
+        for fn in sorted(os.listdir(st)):
+            src = os.path.join(st, fn)
+            if os.path.isfile(src):
+                shutil.copy2(src, os.path.join(pub, fn))
+                print(f"  static: {fn}")
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(os.path.join(os.path.dirname(OUT), "btc.json"), "w", encoding="utf-8") as jf:
         json.dump(slim, jf, ensure_ascii=False, indent=1)

@@ -62,6 +62,12 @@ tr:last-child td{border-bottom:0}
   border-bottom:1px solid #21262d;font-size:12px}
 .kv:last-child{border-bottom:0}
 .kv span:last-child{font-variant-numeric:tabular-nums}
+.spark{width:78px;padding-right:2px}
+.spark svg{width:70px;height:22px;display:block}
+.chartbox{margin:2px 0 9px;border:1px solid #21262d;border-radius:6px;
+  background:var(--surface2);overflow:hidden}
+.chartbox svg{width:100%;height:72px;display:block}
+.cv{overflow:visible}
 .bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:5px}
 .bar i{display:block;height:100%;background:var(--blue)}
 footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;line-height:1.7}
@@ -96,7 +102,7 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
       <th id="thTF">TF</th><th id="thClose">종가</th><th id="thScore">점수</th>
       <th id="thIchi">일목</th><th id="thTK">전환/기준</th><th id="thRib">리본</th>
       <th id="thRsi">RSI</th><th id="thMacd">MACD-H</th><th id="thB">%B</th>
-      <th id="thBw">밴드폭</th><th id="thAtr">ATR%</th>
+      <th id="thBw">밴드폭</th><th id="thAtr">ATR%</th><th id="thChart">추이</th>
     </tr></thead>
     <tbody id="matrix"></tbody>
   </table>
@@ -140,7 +146,7 @@ var T = {
   ko: { title: '₿ BTC 멀티 타임프레임', refresh: '새로고침', loading: '불러오는 중…',
         calc: '계산 중…', fail: '실패: ', cons: '타임프레임 종합',
         thTF:'TF', thClose:'종가', thScore:'점수', thIchi:'일목', thTK:'전환/기준',
-        thRib:'리본', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'밴드폭', thAtr:'ATR%',
+        thRib:'리본', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'밴드폭', thAtr:'ATR%', thChart:'추이',
         matrix:'타임프레임 정렬 매트릭스',
         cloud:'일목 구름', bull:'양운', bear:'음운',
         bb:'볼린저 상/중/하', macdSig:'MACD / 시그널',
@@ -151,7 +157,7 @@ var T = {
   jp: { title: '₿ BTC マルチタイムフレーム', refresh: '更新', loading: '読み込み中…',
         calc: '計算中…', fail: '失敗: ', cons: 'タイムフレーム総合',
         thTF:'TF', thClose:'終値', thScore:'スコア', thIchi:'一目', thTK:'転換/基準',
-        thRib:'リボン', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'バンド幅', thAtr:'ATR%',
+        thRib:'リボン', thRsi:'RSI', thMacd:'MACD-H', thB:'%B', thBw:'バンド幅', thAtr:'ATR%', thChart:'推移',
         matrix:'タイムフレーム整列マトリクス',
         cloud:'一目 雲', bull:'陽転', bear:'陰転',
         bb:'ボリンジャー 上/中/下', macdSig:'MACD / シグナル',
@@ -174,9 +180,84 @@ function setLang(L) {
   document.getElementById('h2matrix').textContent = t('matrix');
   document.getElementById('foot1').textContent = t('foot1');
   document.getElementById('foot2').textContent = t('foot2');
-  ['thTF','thClose','thScore','thIchi','thTK','thRib','thRsi','thMacd','thB','thBw','thAtr']
+  ['thTF','thClose','thScore','thIchi','thTK','thRib','thRsi','thMacd','thB','thBw','thAtr','thChart']
     .forEach(function (k) { var e = document.getElementById(k); if (e) e.textContent = t(k); });
   if (LAST) render(LAST);
+}
+
+// ── SVG 차트 ─────────────────────────────────────────────
+// 의존성 없음. 종가 라인 + 볼린저 밴드 음영 + 일목 구름 음영.
+function scaleY(v, lo, hi, H, pad) {
+  pad = pad || 0;
+  if (hi === lo) return H / 2;
+  return pad + (H - 2 * pad) * (1 - (v - lo) / (hi - lo));
+}
+
+function chartSVG(ser, W, H, opts) {
+  opts = opts || {};
+  if (!ser || ser.length < 2) return '';
+  var mini = !!opts.mini;
+  var n = ser.length, i, p;
+
+  // Y 범위: 종가와 밴드/구름을 모두 포함
+  var lo = Infinity, hi = -Infinity;
+  for (i = 0; i < n; i++) {
+    p = ser[i];
+    [p.c, p.bu, p.bl].forEach(function (v) {
+      if (v != null) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    });
+    if (!mini && p.cl != null) {
+      if (p.cl < lo) lo = p.cl;
+      if (p.ch > hi) hi = p.ch;
+    }
+  }
+  if (!isFinite(lo) || !isFinite(hi)) return '';
+  var m = (hi - lo) * 0.06 || 1;
+  lo -= m; hi += m;
+
+  var X = function (i) { return (W * i) / (n - 1); };
+  var Y = function (v) { return scaleY(v, lo, hi, H, 1); };
+
+  function area(keyHi, keyLo) {
+    var up = [], dn = [], any = false;
+    for (i = 0; i < n; i++) {
+      p = ser[i];
+      if (p[keyHi] == null || p[keyLo] == null) continue;
+      any = true;
+      up.push(X(i).toFixed(1) + ',' + Y(p[keyHi]).toFixed(1));
+      dn.unshift(X(i).toFixed(1) + ',' + Y(p[keyLo]).toFixed(1));
+    }
+    return any ? 'M' + up.join('L') + 'L' + dn.join('L') + 'Z' : '';
+  }
+
+  function line(key) {
+    var d = '', started = false;
+    for (i = 0; i < n; i++) {
+      p = ser[i];
+      if (p[key] == null) continue;
+      d += (started ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(p[key]).toFixed(1);
+      started = true;
+    }
+    return d;
+  }
+
+  var last = ser[n - 1], first = ser[0];
+  var col = last.c >= first.c ? 'var(--up)' : 'var(--down)';
+  var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="cv">';
+
+  if (!mini) {
+    var cloud = area('ch', 'cl');
+    if (cloud) out += '<path d="' + cloud + '" fill="rgba(45,212,191,.13)"/>';
+  }
+  var bb = area('bu', 'bl');
+  if (bb) out += '<path d="' + bb + '" fill="rgba(88,166,255,.10)"/>';
+  if (!mini) {
+    out += '<path d="' + line('bm') + '" stroke="rgba(139,148,158,.5)" stroke-width="1" fill="none" stroke-dasharray="3 3"/>';
+  }
+  out += '<path d="' + line('c') + '" stroke="' + col + '" stroke-width="' + (mini ? 1.2 : 1.6) + '" fill="none"/>';
+  out += '<circle cx="' + X(n - 1).toFixed(1) + '" cy="' + Y(last.c).toFixed(1) + '" r="' + (mini ? 1.6 : 2.4) + '" fill="' + col + '"/>';
+  out += '</svg>';
+  return out;
 }
 
 function render(results) {
@@ -205,7 +286,7 @@ function render(results) {
   var rows = '';
   results.forEach(function (r) {
     if (!r.ok) {
-      rows += '<tr><td>' + (LANG === 'ko' ? r.ko : r.jp) + '</td><td colspan="10" class="n">' + r.error + '</td></tr>';
+      rows += '<tr><td>' + (LANG === 'ko' ? r.ko : r.jp) + '</td><td colspan="11" class="n">' + r.error + '</td></tr>';
       return;
     }
     var a = r.data, s = I.scoreTF(a), ic = a.ichimoku, b = a.boll, rb = a.ribbon;
@@ -223,6 +304,7 @@ function render(results) {
       '<td>' + (b ? b.pctB.toFixed(2) : '—') + '</td>' +
       '<td>' + (b ? b.width.toFixed(2) + '%' : '—') + '</td>' +
       '<td>' + (a.atr / a.close * 100).toFixed(2) + '%</td>' +
+      '<td class="spark">' + chartSVG(a.series.slice(-60), 70, 22, { mini: true }) + '</td>' +
       '</tr>';
   });
   document.getElementById('matrix').innerHTML = rows;
@@ -241,6 +323,7 @@ function render(results) {
     }).join('');
 
     cards += '<div class="card"><h2>' + (LANG === 'ko' ? r.ko : r.jp) + '</h2>' +
+      '<div class="chartbox">' + chartSVG(a.series, 260, 72) + '</div>' +
       ribRows +
       (ic ? '<div class="kv"><span>' + t('cloud') + '</span><span>' + n(ic.cloudLow) + '~' + n(ic.cloudHigh) +
             ' <span class="' + (ic.bullCloud ? 'u' : 'd') + '">' + (ic.bullCloud ? t('bull') : t('bear')) +

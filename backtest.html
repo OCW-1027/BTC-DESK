@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC 규칙 백테스트</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--line:#30363d;
+ --text:#c9d1d9;--muted:#8b949e;--faint:#6e7681;
+ --up:#3fb950;--down:#f85149;--amber:#ffb224;--blue:#58a6ff;--teal:#2dd4bf}
+body{background:var(--bg);color:var(--text);padding:14px;max-width:1300px;margin:0 auto;
+ font:13px/1.55 -apple-system,"Hiragino Kaku Gothic ProN","Noto Sans KR",sans-serif}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:16px;font-weight:700}
+.meta{color:var(--faint);font-size:11px;margin-left:auto}
+a.nav,button{background:var(--surface2);border:1px solid var(--line);color:var(--muted);
+ padding:5px 11px;border-radius:6px;cursor:pointer;font-size:11.5px;text-decoration:none}
+a.nav:hover,button:hover{border-color:var(--amber);color:var(--amber)}
+button.on{background:var(--amber);color:#2a1f05;border-color:var(--amber)}
+.note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--amber);
+ border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7}
+.note b{color:var(--amber)}
+.note .k{color:var(--down);font-weight:700}
+.tabs{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);
+ border-radius:10px;padding:12px;margin-bottom:12px}
+h2{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;
+ margin-bottom:4px;font-weight:600}
+.sub{color:var(--faint);font-size:11px;margin-bottom:9px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:900px}
+th{text-align:right;color:var(--faint);font-weight:600;font-size:10.5px;padding:5px 7px;
+ border-bottom:1px solid var(--line);text-transform:uppercase;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:6px 7px;border-bottom:1px solid #21262d;text-align:right;font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;color:var(--text)}
+tr:last-child td{border-bottom:0}
+tr.strong td{background:rgba(63,185,80,.07)}
+.u{color:var(--up)}.d{color:var(--down)}.n{color:var(--muted)}
+.vb{padding:1px 7px;border-radius:999px;font-size:10px;font-weight:800}
+.vb.강{background:rgba(63,185,80,.18);color:var(--up)}
+.vb.약{background:rgba(255,178,36,.18);color:var(--amber)}
+.vb.무{background:var(--surface2);color:var(--faint)}
+.side{font-size:10px;padding:1px 5px;border-radius:4px;margin-right:5px}
+.side.l{background:rgba(63,185,80,.15);color:var(--up)}
+.side.s{background:rgba(248,81,73,.15);color:var(--down)}
+.side.b{background:var(--surface2);color:var(--faint)}
+footer{color:var(--faint);font-size:10.5px;margin-top:16px;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 규칙 백테스트</h1>
+  <a class="nav" href="mtf.html">멀티 TF</a>
+  <a class="nav" href="index.html">메인</a>
+  <span class="meta" id="meta">불러오는 중…</span>
+</header>
+
+<div class="note" id="note"></div>
+
+<div class="tabs" id="tabs"></div>
+<div id="panes"></div>
+
+<footer>
+  진입은 신호 봉의 <b>다음 봉 시가</b>, 청산은 ATR 손절 1.5배 / 익절 3배, 미도달 시 보유기간 만료 종가.<br>
+  모든 지표는 해당 시점까지의 데이터만 사용하여 미래참조가 없습니다.<br>
+  과거 성과가 미래를 보장하지 않습니다. 정보 제공 목적이며 투자 자문이 아닙니다.
+</footer>
+
+<script>
+var D=null, CUR=null;
+
+function f(v,d){ return v==null||!isFinite(v)?'—':v.toFixed(d==null?2:d); }
+function sg(v,d){ if(v==null||!isFinite(v))return '—'; return (v>0?'+':'')+v.toFixed(d==null?2:d); }
+function cls(v){ return v==null?'n':(v>0?'u':(v<0?'d':'n')); }
+
+fetch('backtest.json',{cache:'no-store'})
+ .then(function(r){return r.json()})
+ .then(function(j){ D=j; init(); })
+ .catch(function(e){ document.getElementById('meta').textContent='로드 실패: '+e.message; });
+
+function init(){
+  document.getElementById('meta').textContent=D.generated_at_jst;
+  // 요약 판정
+  var tot=0, strong=[], tfpos={};
+  Object.keys(D.results).forEach(function(tf){
+    var rows=D.results[tf];
+    tfpos[tf]=rows.filter(function(r){return r.net>0}).length;
+    tot+=rows.length;
+    rows.forEach(function(r){ if(r.verdict==='강') strong.push(r); });
+  });
+  var n=document.getElementById('note');
+  var html='<b>읽는 법</b> — 순기대값은 왕복 수수료 '+D.params.fee_roundtrip+
+    '% + 펀딩 '+D.params.funding_per_8h+'%/8h를 뺀 값입니다. '+
+    't는 기대값이 0과 구분되는 정도로, 2를 넘어야 우연이 아닐 가능성이 높습니다.<br><br>';
+  html+='<b>결과 요약</b><br>';
+  Object.keys(D.meta).forEach(function(tf){
+    var m=D.meta[tf], p=tfpos[tf], t=D.results[tf].length;
+    html+='· '+m.ko+' ('+m.from+'~'+m.to+') — 비용 차감 후 플러스 '+
+      '<span class="'+(p>0?'u':'d')+'">'+p+'/'+t+'</span>개<br>';
+  });
+  html+='<br>';
+  if(strong.length){
+    html+='<b>통계적으로 의미 있는 규칙</b> — '+strong.length+'개<br>';
+    strong.forEach(function(r){
+      html+='· '+r.tf_ko+' <b>'+r.ko+'</b> — 표본 '+r.n+', 승률 '+f(r.winrate,1)+
+        '%, 순기대값 <span class="u">'+sg(r.net)+'%</span>, t='+f(r.tstat_net)+'<br>';
+    });
+  } else {
+    html+='<span class="k">통계적으로 의미 있는 규칙이 없습니다.</span><br>';
+  }
+  html+='<br><span class="k">핵심</span> — 짧은 타임프레임일수록 비용이 우위를 잡아먹습니다. '+
+    '15분봉은 <b>모든 규칙이 비용 차감 후 마이너스</b>이며, 이것이 단타가 어려운 구조적 이유입니다.';
+  n.innerHTML=html;
+
+  var tabs=document.getElementById('tabs');
+  tabs.innerHTML=Object.keys(D.meta).map(function(tf,i){
+    return '<button data-tf="'+tf+'" onclick="show(\''+tf+'\')"'+(i===0?' class="on"':'')+'>'+
+      D.meta[tf].ko+'</button>';
+  }).join('');
+  show(Object.keys(D.meta)[0]);
+}
+
+function show(tf){
+  CUR=tf;
+  var bs=document.querySelectorAll('.tabs button');
+  for(var i=0;i<bs.length;i++) bs[i].className=(bs[i].getAttribute('data-tf')===tf)?'on':'';
+  var m=D.meta[tf], rows=D.results[tf];
+  var SIDE={1:['롱','l'],'-1':['숏','s'],0:['양방','b']};
+  var body=rows.map(function(r){
+    var s=SIDE[r.side]||SIDE[0];
+    return '<tr class="'+(r.verdict==='강'?'strong':'')+'">'+
+      '<td><span class="side '+s[1]+'">'+s[0]+'</span>'+r.ko+'</td>'+
+      '<td>'+r.n+'</td>'+
+      '<td>'+f(r.winrate,1)+'%</td>'+
+      '<td class="'+cls(r.avg)+'">'+sg(r.avg)+'%</td>'+
+      '<td class="d">-'+f(r.cost)+'%</td>'+
+      '<td class="'+cls(r.net)+'"><b>'+sg(r.net)+'%</b></td>'+
+      '<td class="'+(Math.abs(r.tstat_net)>2?cls(r.tstat_net):'n')+'">'+f(r.tstat_net)+'</td>'+
+      '<td class="u">'+sg(r.avg_win)+'%</td>'+
+      '<td class="d">'+f(r.avg_loss)+'%</td>'+
+      '<td>'+(r.pf?f(r.pf):'—')+'</td>'+
+      '<td class="d">'+f(r.avg_mae)+'%</td>'+
+      '<td class="d">'+f(r.mdd,1)+'%</td>'+
+      '<td>'+f(r.avg_bars,1)+'</td>'+
+      '<td><span class="vb '+r.verdict+'">'+r.verdict+'</span></td>'+
+      '</tr>';
+  }).join('');
+  document.getElementById('panes').innerHTML=
+    '<div class="wrap"><h2>'+m.ko+'</h2>'+
+    '<div class="sub">'+m.from+' ~ '+m.to+' · '+m.bars.toLocaleString()+'봉 · 최대 보유 '+m.hold+'봉</div>'+
+    '<table><thead><tr>'+
+    '<th>규칙</th><th>표본</th><th>승률</th><th>총기대</th><th>비용</th><th>순기대</th><th>t</th>'+
+    '<th>평균익</th><th>평균손</th><th>PF</th><th>평균MAE</th><th>누적MDD</th><th>평균봉</th><th>판정</th>'+
+    '</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+</script>
+</body>
+</html>

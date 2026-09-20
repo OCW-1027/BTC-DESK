@@ -70,6 +70,37 @@ tr:last-child td{border-bottom:0}
 .cv{overflow:visible}
 .bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:5px}
 .bar i{display:block;height:100%;background:var(--blue)}
+
+.calcwrap{margin-top:12px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:12px}
+.cgrid label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+.cgrid input,.cgrid select{background:var(--surface2);border:1px solid var(--line);color:var(--text);
+  padding:6px 8px;border-radius:6px;font-size:13px;font-variant-numeric:tabular-nums;width:100%}
+.cgrid input:focus,.cgrid select:focus{outline:none;border-color:var(--blue)}
+.inrow{display:flex;gap:4px}
+button.mini{padding:4px 8px;font-size:10px;white-space:nowrap}
+.hint{display:inline-block;width:13px;height:13px;line-height:13px;text-align:center;
+  border-radius:50%;background:var(--surface2);border:1px solid var(--line);color:var(--faint);
+  font-size:9px;font-style:normal;cursor:help;margin-left:3px;position:relative}
+.hint:hover{border-color:var(--amber);color:var(--amber)}
+.tipbox{position:fixed;z-index:99;max-width:280px;background:#0b0f14;border:1px solid var(--amber);
+  border-radius:7px;padding:8px 10px;font-size:11.5px;line-height:1.55;color:var(--text);
+  box-shadow:0 6px 20px rgba(0,0,0,.6);pointer-events:none}
+.tipbox b{color:var(--amber)}
+.outgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.obox{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:10px}
+.obox h3{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:7px;font-weight:600}
+.orow{display:flex;justify-content:space-between;gap:8px;padding:3px 0;
+  border-bottom:1px solid #21262d;font-size:12px}
+.orow:last-child{border-bottom:0}
+.orow b{font-variant-numeric:tabular-nums;font-weight:600}
+.warn{background:rgba(248,81,73,.13);border-color:rgba(248,81,73,.45)}
+.good{background:rgba(63,185,80,.10);border-color:rgba(63,185,80,.35)}
+.chk{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #21262d;font-size:12px;align-items:flex-start}
+.chk:last-child{border-bottom:0}
+.chk .mk{flex:0 0 16px;font-weight:800}
+.chk .ds{color:var(--faint);font-size:10.5px}
 footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;line-height:1.7}
 @media(max-width:560px){.px{font-size:25px}.cons{margin-left:0}}
 </style>
@@ -80,6 +111,7 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
   <h1>₿ BTC 멀티 타임프레임</h1>
   <span class="dot" id="dot"></span>
   <button onclick="refresh()" id="btnRefresh">새로고침</button>
+  <a class="nav" href="backtest.html" style="background:var(--surface2);border:1px solid var(--line);color:var(--muted);padding:5px 11px;border-radius:6px;font-size:11.5px;text-decoration:none">백테스트 ↗</a>
   <span class="lang"><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></span>
   <span class="meta" id="meta">불러오는 중…</span>
 </header>
@@ -90,25 +122,55 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
     <div class="chg" id="chg">—</div>
   </div>
   <div class="cons">
-    <div class="lbl" id="consLbl">타임프레임 종합</div>
+    <div class="lbl"><span id="consLbl">타임프레임 종합</span><i class="hint" data-h="cons">?</i></div>
     <div class="val neutral" id="cons">—</div>
   </div>
 </div>
 
 <div class="wrap">
-  <h2 id="h2matrix">타임프레임 정렬 매트릭스</h2>
+  <h2><span id="h2matrix">타임프레임 정렬 매트릭스</span><i class="hint" data-h="ichi">?</i></h2>
   <table>
     <thead><tr>
-      <th id="thTF">TF</th><th id="thClose">종가</th><th id="thScore">점수</th>
-      <th id="thIchi">일목</th><th id="thTK">전환/기준</th><th id="thRib">리본</th>
-      <th id="thRsi">RSI</th><th id="thMacd">MACD-H</th><th id="thB">%B</th>
-      <th id="thBw">밴드폭</th><th id="thAtr">ATR%</th><th id="thChart">추이</th>
+      <th id="thTF">TF</th><th id="thClose">종가</th><th><span id="thScore">점수</span><i class="hint" data-h="score">?</i></th>
+      <th><span id="thIchi">일목</span><i class="hint" data-h="ichi">?</i></th><th><span id="thTK">전환/기준</span><i class="hint" data-h="tk">?</i></th><th><span id="thRib">리본</span><i class="hint" data-h="rib">?</i></th>
+      <th><span id="thRsi">RSI</span><i class="hint" data-h="rsi">?</i></th><th><span id="thMacd">MACD-H</span><i class="hint" data-h="macd">?</i></th><th><span id="thB">%B</span><i class="hint" data-h="pb">?</i></th>
+      <th><span id="thBw">밴드폭</span><i class="hint" data-h="bw">?</i></th><th><span id="thAtr">ATR%</span><i class="hint" data-h="atr">?</i></th><th id="thChart">추이</th>
     </tr></thead>
     <tbody id="matrix"></tbody>
   </table>
 </div>
 
 <div class="grid" id="cards"></div>
+
+
+<!-- ══════════ 포지션 계산기 ══════════ -->
+<div class="wrap calcwrap">
+  <h2 id="h2calc">포지션 계산기</h2>
+
+  <div class="cgrid">
+    <label><span id="lbMargin">증거금</span><i class="hint" data-h="margin">?</i>
+      <input id="iMargin" type="number" value="720" step="10"></label>
+    <label><span id="lbLev">레버리지</span><i class="hint" data-h="lev">?</i>
+      <input id="iLev" type="number" value="10" step="1" min="1" max="125"></label>
+    <label><span id="lbSide">방향</span><i class="hint" data-h="side">?</i>
+      <select id="iSide"><option value="long">롱 / ロング</option><option value="short">숏 / ショート</option></select></label>
+    <label><span id="lbEntry">진입가</span><i class="hint" data-h="entry">?</i>
+      <span class="inrow"><input id="iEntry" type="number" step="1">
+      <button class="mini" onclick="useMarket()" id="btnMkt">현재가</button></span></label>
+    <label><span id="lbSL">손절가</span><i class="hint" data-h="sl">?</i>
+      <span class="inrow"><input id="iSL" type="number" step="1">
+      <button class="mini" onclick="useATR()" id="btnAtr">ATR</button></span></label>
+    <label><span id="lbMMR">유지증거금률 %</span><i class="hint" data-h="mmr">?</i>
+      <input id="iMMR" type="number" value="0.4" step="0.05"></label>
+    <label><span id="lbTFsrc">기준 TF</span><i class="hint" data-h="tfsrc">?</i>
+      <select id="iTF"><option value="15m">15분</option><option value="1H">1시간</option>
+      <option value="4H" selected>4시간</option><option value="1D">일봉</option></select></label>
+  </div>
+
+  <div id="calcOut"></div>
+  <div id="revOut"></div>
+  <div id="chkOut"></div>
+</div>
 
 <footer>
   <span id="foot1">데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다</span><br>
@@ -168,6 +230,11 @@ var T = {
 };
 function t(k) { return T[LANG][k]; }
 
+var CLBL={ko:{h2calc:'포지션 계산기',lbMargin:'증거금',lbLev:'레버리지',lbSide:'방향',
+ lbEntry:'진입가',lbSL:'손절가',lbMMR:'유지증거금률 %',lbTFsrc:'기준 TF',btnMkt:'현재가',btnAtr:'ATR'},
+ jp:{h2calc:'ポジション計算機',lbMargin:'証拠金',lbLev:'レバレッジ',lbSide:'方向',
+ lbEntry:'エントリー価格',lbSL:'損切り価格',lbMMR:'維持証拠金率 %',lbTFsrc:'基準TF',btnMkt:'現在値',btnAtr:'ATR'}};
+
 function setLang(L) {
   LANG = L;
   try { localStorage.setItem('btcmtf_lang', L); } catch (e) {}
@@ -182,6 +249,8 @@ function setLang(L) {
   document.getElementById('foot2').textContent = t('foot2');
   ['thTF','thClose','thScore','thIchi','thTK','thRib','thRsi','thMacd','thB','thBw','thAtr','thChart']
     .forEach(function (k) { var e = document.getElementById(k); if (e) e.textContent = t(k); });
+  var cl=CLBL[L]||CLBL.ko;
+  Object.keys(cl).forEach(function(k){var e=document.getElementById(k); if(e) e.textContent=cl[k];});
   if (LAST) render(LAST);
 }
 
@@ -343,6 +412,7 @@ function render(results) {
   document.getElementById('meta').textContent =
     new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Tokyo' }) + t('basis');
   stat('on');
+  try { calc(); bindHints(); } catch (e) { console.log('calc', e); }
 }
 
 function refresh() {
@@ -355,6 +425,272 @@ function refresh() {
 }
 
 setLang(LANG);
+
+// ══════════ 툴팁 사전 ══════════
+var HINTS = {
+ ko:{
+  ichi:'<b>일목균형표</b> 전환선9·기준선26·선행스팬52. 가격이 구름 위면 상승 구조, 아래면 하락 구조, 안이면 방향 없음. 구름은 26봉 앞에 그려져 미래 지지·저항 역할을 한다.',
+  tk:'<b>전환선/기준선</b> 전환선이 기준선 위면 단기 우위. 둘의 교차는 추세 전환 신호로 본다. 기준선은 중기 지지·저항으로도 쓰인다.',
+  rib:'<b>SMA 리본</b> 5·10·20·60·99·125·200일 이동평균. 짧은 것이 긴 것보다 전부 위면 정배열(강세). 옆의 n/7은 현재가가 몇 개 위에 있는지.',
+  rsi:'<b>RSI(14)</b> 0~100. 70 이상 과열, 30 이하 과매도. 단 강한 추세에서는 70 위에 오래 머물 수 있어 단독 반전 신호로 쓰면 안 된다.',
+  macd:'<b>MACD 히스토그램</b> MACD선-시그널선. 양수면 상승 모멘텀, 음수면 하락. 부호가 바뀌는 순간이 모멘텀 전환점. 값이 줄어들면 추세가 약해지는 중.',
+  pb:'<b>%B</b> 볼린저 밴드 내 위치. 1=상단, 0.5=중심, 0=하단. 0.8 이상이면 과열권, 0.2 이하면 과매도권. 1을 넘으면 밴드 밖으로 이탈.',
+  bw:'<b>밴드폭</b> (상단-하단)/중심 ×100. 변동성 크기. 값이 작아지면 수축(스퀴즈)으로 큰 움직임 직전일 수 있고, 커지면 이미 변동성이 터진 상태.',
+  atr:'<b>ATR%</b> 평균진폭을 가격 대비 %로 표시. 하루(또는 해당 봉) 평균 변동폭. 손절 폭을 이 값보다 좁게 잡으면 정상 노이즈에 털린다.',
+  score:'<b>TF 점수</b> 일목(±2)·리본(±1)·MACD(±1)·RSI(±1) 합산. -4~+4. 해당 타임프레임의 방향성 요약.',
+  cons:'<b>타임프레임 종합</b> 5개 TF 점수를 가중 평균. 상위 TF에 더 큰 가중치(1분 0.5 ~ 일봉 2.0). +25% 이상 강세, -25% 이하 약세.',
+  margin:'포지션에 넣을 증거금(USDT). 이 금액이 최대 손실 가능액이다.',
+  lev:'레버리지 배율. 명목금액 = 증거금 × 배율. 배율이 높을수록 청산가가 진입가에 가까워진다.',
+  side:'롱은 가격 상승에 베팅, 숏은 하락에 베팅.',
+  entry:'진입 예정 가격. 현재가 버튼을 누르면 실시간 가격이 들어간다.',
+  sl:'손절 가격. ATR 버튼을 누르면 기준 TF의 ATR×1.5 거리로 자동 설정된다.',
+  mmr:'유지증거금률. 거래소가 청산을 발동하는 기준. 대개 0.4~0.5%이며 포지션이 클수록 높아진다. 실제 값은 거래소 화면에서 확인할 것.',
+  tfsrc:'ATR과 레벨 계산에 사용할 타임프레임. 보유 예정 기간에 맞춰 고르면 된다.'
+ },
+ jp:{
+  ichi:'<b>一目均衡表</b> 転換線9・基準線26・先行スパン52。雲の上なら上昇構造、下なら下降構造、中なら方向感なし。雲は26本先に描かれ将来の支持・抵抗となる。',
+  tk:'<b>転換線/基準線</b> 転換線が基準線の上なら短期優位。両線のクロスはトレンド転換のサイン。基準線は中期の支持・抵抗としても使う。',
+  rib:'<b>SMAリボン</b> 5・10・20・60・99・125・200日移動平均。短期が長期より全て上なら正配列(強気)。横のn/7は現在値がいくつ上にあるか。',
+  rsi:'<b>RSI(14)</b> 0~100。70以上で過熱、30以下で売られ過ぎ。ただし強いトレンドでは70超に長く留まるため単独の反転シグナルにはしない。',
+  macd:'<b>MACDヒストグラム</b> MACD線-シグナル線。プラスで上昇モメンタム、マイナスで下降。符号の反転がモメンタム転換点。値の縮小はトレンド減速。',
+  pb:'<b>%B</b> ボリンジャーバンド内の位置。1=上限、0.5=中心、0=下限。0.8以上で過熱圏、0.2以下で売られ過ぎ圏。1超はバンド外へ逸脱。',
+  bw:'<b>バンド幅</b> (上限-下限)/中心 ×100。ボラティリティの大きさ。縮小はスクイーズで大きな動きの前兆、拡大は既に動いた状態。',
+  atr:'<b>ATR%</b> 平均変動幅を価格比%で表示。その足の平均的な値動き。損切り幅をこれより狭くすると通常のノイズで刈られる。',
+  score:'<b>TFスコア</b> 一目(±2)・リボン(±1)・MACD(±1)・RSI(±1)の合計。-4~+4。そのタイムフレームの方向性要約。',
+  cons:'<b>タイムフレーム総合</b> 5つのTFスコアを加重平均。上位TFほど重い(1分0.5~日足2.0)。+25%以上で強気、-25%以下で弱気。',
+  margin:'ポジションに入れる証拠金(USDT)。この金額が最大損失額となる。',
+  lev:'レバレッジ倍率。想定元本 = 証拠金 × 倍率。倍率が高いほど清算価格が建値に近づく。',
+  side:'ロングは値上がり、ショートは値下がりに賭ける。',
+  entry:'エントリー予定価格。現在値ボタンでリアルタイム価格が入る。',
+  sl:'損切り価格。ATRボタンで基準TFのATR×1.5の距離に自動設定される。',
+  mmr:'維持証拠金率。取引所が清算を発動する基準。通常0.4~0.5%でポジションが大きいほど上がる。実際の値は取引所画面で確認すること。',
+  tfsrc:'ATRとレベル計算に使うタイムフレーム。保有予定期間に合わせて選ぶ。'
+ }
+};
+
+// 툴팁 표시
+var _tip=null;
+function showTip(el){
+  hideTip();
+  var k=el.getAttribute('data-h');
+  var txt=(HINTS[LANG]||HINTS.ko)[k];
+  if(!txt) return;
+  _tip=document.createElement('div');
+  _tip.className='tipbox';
+  _tip.innerHTML=txt;
+  document.body.appendChild(_tip);
+  var r=el.getBoundingClientRect();
+  var w=_tip.offsetWidth,h=_tip.offsetHeight;
+  var x=Math.min(window.innerWidth-w-8,Math.max(8,r.left-w/2+r.width/2));
+  var y=r.top-h-8; if(y<8) y=r.bottom+8;
+  _tip.style.left=x+'px'; _tip.style.top=y+'px';
+}
+function hideTip(){ if(_tip){_tip.remove();_tip=null;} }
+function bindHints(){
+  var hs=document.querySelectorAll('.hint');
+  for(var i=0;i<hs.length;i++){
+    var e=hs[i];
+    e.onmouseenter=function(){showTip(this)};
+    e.onmouseleave=hideTip;
+    e.onclick=function(ev){ev.stopPropagation(); if(_tip)hideTip(); else showTip(this);};
+  }
+}
+document.addEventListener('click',hideTip);
+window.addEventListener('scroll',hideTip,true);
+
+// ══════════ 포지션 계산 ══════════
+function tfData(key){
+  if(!LAST) return null;
+  var r=LAST.filter(function(x){return x.key===key&&x.ok})[0];
+  return r?r.data:null;
+}
+function curPx(){
+  var d=tfData('1m')||tfData('1H');
+  return d?d.close:null;
+}
+function useMarket(){
+  var p=curPx(); if(p) document.getElementById('iEntry').value=Math.round(p);
+  calc();
+}
+function useATR(){
+  var tf=document.getElementById('iTF').value, d=tfData(tf);
+  var e=parseFloat(document.getElementById('iEntry').value)||curPx();
+  if(!d||!e) return;
+  var side=document.getElementById('iSide').value;
+  var sl=side==='long'? e-d.atr*1.5 : e+d.atr*1.5;
+  document.getElementById('iSL').value=Math.round(sl);
+  calc();
+}
+
+function num(id){ return parseFloat(document.getElementById(id).value); }
+
+function calc(){
+  var out=document.getElementById('calcOut');
+  var rev=document.getElementById('revOut');
+  var chk=document.getElementById('chkOut');
+  if(!out) return;
+
+  var M=num('iMargin'), L=num('iLev'), side=document.getElementById('iSide').value;
+  var E=num('iEntry'), SL=num('iSL'), MMR=num('iMMR')/100;
+  var tf=document.getElementById('iTF').value, d=tfData(tf);
+  var px=curPx();
+  if(!E&&px){ E=Math.round(px); document.getElementById('iEntry').value=E; }
+  if(!M||!L||!E){ out.innerHTML='<div class="obox">입력값을 확인하세요</div>'; return; }
+
+  var isL=side==='long';
+  var notional=M*L, qty=notional/E;
+  // 청산가: 증거금이 유지증거금 수준까지 소진되는 가격
+  var buf=(M-notional*MMR)/qty;
+  var liq=isL? E-buf : E+buf;
+  var liqD=(liq/E-1)*100;
+
+  var rows='';
+  function R(k,v,c){ rows+='<div class="orow"><span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b></div>'; }
+  var f0=function(v){return v==null||!isFinite(v)?'—':Math.round(v).toLocaleString('en-US')};
+  var f2=function(v){return v==null||!isFinite(v)?'—':v.toFixed(2)};
+
+  R(LANG==='ko'?'명목금액':'想定元本', f0(notional)+' USDT');
+  R(LANG==='ko'?'수량':'数量', qty.toFixed(5)+' BTC');
+  R(LANG==='ko'?'청산가':'清算価格', f0(liq), 'd');
+  R(LANG==='ko'?'청산까지':'清算まで', f2(Math.abs(liqD))+'%', Math.abs(liqD)<5?'d':'');
+
+  // 손절
+  var slLoss=null, slPct=null, slDist=null, atrMult=null;
+  if(SL&&isFinite(SL)){
+    slDist=Math.abs(E-SL);
+    slLoss=slDist*qty;
+    slPct=slLoss/M*100;
+    R(LANG==='ko'?'손절 거리':'損切り距離', f2(slDist/E*100)+'%');
+    R(LANG==='ko'?'손절 손실':'損切り損失', '-'+f0(slLoss)+' USDT', 'd');
+    R(LANG==='ko'?'증거금 대비':'証拠金比', '-'+f2(slPct)+'%', slPct>30?'d':'');
+    if(d){ atrMult=slDist/d.atr; R(LANG==='ko'?'ATR 대비':'ATR比', f2(atrMult)+(LANG==='ko'?'배':'倍'), atrMult<1?'d':'u'); }
+    var slBeyond = isL? (SL<=liq) : (SL>=liq);
+    if(slBeyond) R('⚠', LANG==='ko'?'손절이 청산가 밖':'損切りが清算価格の外','d');
+  }
+  // 펀딩
+  var fRate=0.01;
+  R(LANG==='ko'?'펀딩(0.01% 가정)':'資金調達(0.01%想定)','-'+f2(notional*0.0001*3)+' USDT/'+(LANG==='ko'?'일':'日'));
+
+  var box1='<div class="obox'+(Math.abs(liqD)<5?' warn':'')+'"><h3>'+(LANG==='ko'?'포지션':'ポジション')+'</h3>'+rows+'</div>';
+
+  // R:R 목표가
+  var rr='';
+  if(slDist){
+    [1,1.5,2,3].forEach(function(k){
+      var tp=isL? E+slDist*k : E-slDist*k;
+      var prof=slDist*k*qty;
+      rr+='<div class="orow"><span>R:R '+k+'</span><b class="u">'+f0(tp)+'  (+'+f0(prof)+')</b></div>';
+    });
+  } else rr='<div class="orow"><span>'+(LANG==='ko'?'손절가를 입력하세요':'損切り価格を入力')+'</span><b>—</b></div>';
+  var box2='<div class="obox"><h3>'+(LANG==='ko'?'목표가 (손절폭 배수)':'目標値 (損切り幅の倍数)')+'</h3>'+rr+'</div>';
+
+  // 주요 레벨 도달 시 손익
+  var lv='';
+  if(d){
+    var cands=[];
+    if(d.ichimoku){ cands.push([LANG==='ko'?'일목 기준선':'一目 基準線',d.ichimoku.kijun]); cands.push([LANG==='ko'?'구름 상단':'雲 上限',d.ichimoku.cloudHigh]); cands.push([LANG==='ko'?'구름 하단':'雲 下限',d.ichimoku.cloudLow]); }
+    if(d.boll){ cands.push(['BB '+(LANG==='ko'?'상단':'上限'),d.boll.upper]); cands.push(['BB '+(LANG==='ko'?'중심':'中心'),d.boll.mid]); cands.push(['BB '+(LANG==='ko'?'하단':'下限'),d.boll.lower]); }
+    cands.push(['SMA200',d.ribbon[200]]);
+    cands.sort(function(a,b){return b[1]-a[1]});
+    cands.forEach(function(c){
+      if(!c[1]) return;
+      var pnl=(isL? c[1]-E : E-c[1])*qty;
+      lv+='<div class="orow"><span>'+c[0]+' '+f0(c[1])+'</span><b class="'+(pnl>0?'u':'d')+'">'+(pnl>0?'+':'')+f0(pnl)+'</b></div>';
+    });
+  }
+  var box3='<div class="obox"><h3>'+(LANG==='ko'?'레벨 도달 시 손익 (USDT)':'レベル到達時の損益')+'</h3>'+(lv||'—')+'</div>';
+
+  out.innerHTML='<div class="outgrid">'+box1+box2+box3+'</div>';
+
+  // ── 역산
+  var rv='';
+  function RV(k,v,c){ rv+='<div class="orow"><span>'+k+'</span><b class="'+(c||'')+'">'+v+'</b></div>'; }
+  if(d){
+    // 1) 주요 레벨까지 견디려면 최대 레버리지
+    var targets=[];
+    if(d.ichimoku){ targets.push([LANG==='ko'?'구름 반대편':'雲の反対側', isL?d.ichimoku.cloudLow:d.ichimoku.cloudHigh]); }
+    if(d.boll){ targets.push([LANG==='ko'?'BB 중심선':'BB中心線', d.boll.mid]); }
+    targets.push(['SMA200', d.ribbon[200]]);
+    targets.forEach(function(t){
+      if(!t[1]) return;
+      var dist=Math.abs(E-t[1])/E;
+      var maxL=1/(dist+MMR);
+      if(maxL>0&&isFinite(maxL)) RV(t[0]+' '+f0(t[1]), '≤ '+f2(maxL)+'x', maxL<L?'d':'u');
+    });
+    // 2) 손실 제한 역산
+    if(slDist){
+      [10,20,30].forEach(function(pc){
+        var maxQty=(M*pc/100)/slDist;
+        var maxN=maxQty*E;
+        RV((LANG==='ko'?'손실 ':'損失 ')+pc+'% 제한', f2(maxN/M)+'x  ('+maxQty.toFixed(5)+' BTC)');
+      });
+    }
+    // 3) ATR 기준 권장
+    var recSL=d.atr*1.5;
+    var recL=1/((recSL/E)*3+MMR);
+    RV(LANG==='ko'?'ATR×1.5 손절 · 증거금 33% 손실 기준':'ATR×1.5損切り・証拠金33%基準', '≤ '+f2(recL)+'x','u');
+  }
+  rev.innerHTML='<div class="outgrid" style="margin-top:10px"><div class="obox"><h3>'+
+    (LANG==='ko'?'역산 — 최대 레버리지':'逆算 — 最大レバレッジ')+'</h3>'+(rv||'—')+'</div>'+
+    buildChecklist(d,{M:M,L:L,E:E,SL:SL,liq:liq,liqD:liqD,slPct:slPct,atrMult:atrMult,isL:isL,notional:notional})+'</div>';
+  chk.innerHTML='';
+}
+
+function buildChecklist(d,o){
+  var items=[];
+  function add(ok,ko,jp,dsKo,dsJp){ items.push({ok:ok,t:LANG==='ko'?ko:jp,ds:LANG==='ko'?dsKo:dsJp}); }
+
+  // 1. 청산 여유
+  add(Math.abs(o.liqD)>=8,'청산까지 8% 이상 여유','清算まで8%以上の余裕',
+      '현재 '+Math.abs(o.liqD).toFixed(1)+'%','現在 '+Math.abs(o.liqD).toFixed(1)+'%');
+  // 2. 손절 설정
+  add(!!o.SL&&isFinite(o.SL),'손절가 설정됨','損切り設定済み','진입과 동시에 주문','エントリーと同時に発注');
+  // 3. ATR 대비 손절
+  if(o.atrMult!=null) add(o.atrMult>=1,'손절이 ATR 1배 이상','損切りがATR1倍以上',
+      o.atrMult.toFixed(2)+'배','×'+o.atrMult.toFixed(2));
+  // 4. 손실 한도
+  if(o.slPct!=null) add(o.slPct<=30,'손실이 증거금 30% 이내','損失が証拠金30%以内',
+      o.slPct.toFixed(1)+'%',o.slPct.toFixed(1)+'%');
+  // 5. 손절이 청산 안쪽
+  if(o.SL) add(o.isL? o.SL>o.liq : o.SL<o.liq,'손절이 청산가 안쪽','損切りが清算価格の内側',
+      '청산 전에 끊긴다','清算前に切れる');
+  // 6. 상위 TF 방향 일치
+  if(LAST){
+    var cons=window.BTCIndicators.consensus(LAST);
+    var agree = o.isL? cons.pct>0 : cons.pct<0;
+    add(agree,'상위 타임프레임 방향과 일치','上位TFの方向と一致',
+        '종합 '+cons.pct.toFixed(0)+'%','総合 '+cons.pct.toFixed(0)+'%');
+  }
+  // 7. 과열 구간 진입 여부
+  if(d&&d.rsi!=null){
+    var overheated = o.isL? d.rsi>=70 : d.rsi<=30;
+    add(!overheated,'과열 구간 진입 아님','過熱圏でのエントリーでない',
+        'RSI '+d.rsi.toFixed(1),'RSI '+d.rsi.toFixed(1));
+  }
+  // 8. 밴드 위치
+  if(d&&d.boll&&d.boll.pctB!=null){
+    var b=d.boll.pctB;
+    var bad = o.isL? b>0.85 : b<0.15;
+    add(!bad,'밴드 극단부 아님','バンド極端部でない','%B '+b.toFixed(2),'%B '+b.toFixed(2));
+  }
+
+  var ok=items.filter(function(x){return x.ok}).length;
+  var html='<div class="obox'+(ok===items.length?' good':(ok<items.length-2?' warn':''))+'"><h3>'+
+    (LANG==='ko'?'진입 체크리스트':'エントリーチェックリスト')+'  '+ok+'/'+items.length+'</h3>';
+  items.forEach(function(x){
+    html+='<div class="chk"><span class="mk '+(x.ok?'u':'d')+'">'+(x.ok?'✓':'✕')+'</span>'+
+          '<span>'+x.t+'<br><span class="ds">'+x.ds+'</span></span></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// 입력 변경 시 재계산
+['iMargin','iLev','iSide','iEntry','iSL','iMMR','iTF'].forEach(function(id){
+  var e=document.getElementById(id);
+  if(e){ e.addEventListener('input',calc); e.addEventListener('change',calc); }
+});
+
 refresh();
 setInterval(function () { if (!document.hidden) refresh(); }, 60000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });

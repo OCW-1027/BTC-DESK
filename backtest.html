@@ -41,6 +41,11 @@ tr.strong td{background:rgba(63,185,80,.07)}
 .vb.강{background:rgba(63,185,80,.18);color:var(--up)}
 .vb.약{background:rgba(255,178,36,.18);color:var(--amber)}
 .vb.무{background:var(--surface2);color:var(--faint)}
+.vb.과최적화{background:rgba(248,81,73,.18);color:var(--down)}
+.split{font-size:10.5px;color:var(--faint)}
+.split b{font-variant-numeric:tabular-nums}
+.ctrl{background:var(--surface2);border:1px solid var(--line);border-radius:7px;
+ padding:8px 11px;margin-bottom:9px;font-size:11.5px;color:var(--muted)}
 .side{font-size:10px;padding:1px 5px;border-radius:4px;margin-right:5px}
 .side.l{background:rgba(63,185,80,.15);color:var(--up)}
 .side.s{background:rgba(248,81,73,.15);color:var(--down)}
@@ -69,7 +74,7 @@ footer{color:var(--faint);font-size:10.5px;margin-top:16px;text-align:center;lin
 </footer>
 
 <script>
-var D=null, CUR=null;
+var D=null, CUR=null, FWD=null;
 
 function f(v,d){ return v==null||!isFinite(v)?'—':v.toFixed(d==null?2:d); }
 function sg(v,d){ if(v==null||!isFinite(v))return '—'; return (v>0?'+':'')+v.toFixed(d==null?2:d); }
@@ -91,9 +96,15 @@ function init(){
     rows.forEach(function(r){ if(r.verdict==='강') strong.push(r); });
   });
   var n=document.getElementById('note');
+  var bt=D.results[Object.keys(D.results)[0]][0];
+  var BT_T=bt?bt.bonf_t:4.58;
   var html='<b>읽는 법</b> — 순기대값은 왕복 수수료 '+D.params.fee_roundtrip+
-    '% + 펀딩 '+D.params.funding_per_8h+'%/8h를 뺀 값입니다. '+
-    't는 기대값이 0과 구분되는 정도로, 2를 넘어야 우연이 아닐 가능성이 높습니다.<br><br>';
+    '% + 펀딩 '+D.params.funding_per_8h+'%/8h를 뺀 값입니다.<br>'+
+    '규칙 '+D.params.n_tests+'개를 동시에 시험했으므로 <b>다중검정 보정</b>이 필요합니다. '+
+    '무작위 데이터에서도 이만큼 시험하면 t=2를 넘는 규칙이 몇 개 우연히 나오기 때문입니다. '+
+    '보정 후 기준은 <b>t ≥ '+f(BT_T)+'</b>입니다.<br>'+
+    '<b>학습70%/검증30%</b>는 앞 기간으로 고른 규칙이 뒤 기간에서도 통했는지 봅니다. '+
+    '학습에서만 좋고 검증에서 무너지면 <span class="k">과최적화</span>입니다.<br><br>';
   html+='<b>결과 요약</b><br>';
   Object.keys(D.meta).forEach(function(tf){
     var m=D.meta[tf], p=tfpos[tf], t=D.results[tf].length;
@@ -101,25 +112,88 @@ function init(){
       '<span class="'+(p>0?'u':'d')+'">'+p+'/'+t+'</span>개<br>';
   });
   html+='<br>';
+  var weak=[],over=[];
+  Object.keys(D.results).forEach(function(tf){
+    D.results[tf].forEach(function(r){
+      if(r.verdict==='약') weak.push(r);
+      if(r.verdict==='과최적화') over.push(r);
+    });
+  });
   if(strong.length){
-    html+='<b>통계적으로 의미 있는 규칙</b> — '+strong.length+'개<br>';
+    html+='<b>보정 기준을 통과한 규칙</b> — '+strong.length+'개<br>';
     strong.forEach(function(r){
-      html+='· '+r.tf_ko+' <b>'+r.ko+'</b> — 표본 '+r.n+', 승률 '+f(r.winrate,1)+
-        '%, 순기대값 <span class="u">'+sg(r.net)+'%</span>, t='+f(r.tstat_net)+'<br>';
+      html+='· '+r.tf_ko+' <b>'+r.ko+'</b> — 표본 '+r.n+', 순기대 '+sg(r.net)+'%, t='+f(r.tstat_net)+'<br>';
     });
   } else {
-    html+='<span class="k">통계적으로 의미 있는 규칙이 없습니다.</span><br>';
+    html+='<span class="k">보정 기준(t ≥ '+f(BT_T)+')을 통과한 규칙은 없습니다.</span><br>';
   }
-  html+='<br><span class="k">핵심</span> — 짧은 타임프레임일수록 비용이 우위를 잡아먹습니다. '+
-    '15분봉은 <b>모든 규칙이 비용 차감 후 마이너스</b>이며, 이것이 단타가 어려운 구조적 이유입니다.';
+  if(weak.length){
+    html+='<br><b>조건부 후보</b> — 검증 기간에서도 플러스이나 통계적 확신은 부족 ('+weak.length+'개)<br>';
+    weak.slice(0,4).forEach(function(r){
+      var o=r.oos?sg(r.oos.net)+'%':'—';
+      html+='· '+r.tf_ko+' '+r.ko+' — 전체 '+sg(r.net)+'%, 검증30% '+o+', 표본 '+r.n+'<br>';
+    });
+  }
+  if(over.length){
+    html+='<br><b>과최적화 의심</b> — 학습에서만 통하고 검증에서 무너진 규칙 '+over.length+'개<br>';
+  }
+  html+='<br><span class="k">결론</span> — 단일 지표 규칙으로는 확실한 우위가 확인되지 않습니다. '+
+    '15분봉은 모든 규칙이 비용 차감 후 마이너스이며, 이것이 단타가 어려운 구조적 이유입니다. '+
+    '<b>전진검증 탭</b>에 오늘 이후 발생하는 신호가 자동 기록되므로, 시간이 지날수록 '+
+    '조작 불가능한 근거가 쌓입니다.';
   n.innerHTML=html;
 
   var tabs=document.getElementById('tabs');
   tabs.innerHTML=Object.keys(D.meta).map(function(tf,i){
     return '<button data-tf="'+tf+'" onclick="show(\''+tf+'\')"'+(i===0?' class="on"':'')+'>'+
       D.meta[tf].ko+'</button>';
-  }).join('');
+  }).join('')+'<button data-tf="_fwd" onclick="showFwd()" style="margin-left:8px">전진검증 (실시간 기록)</button>';
   show(Object.keys(D.meta)[0]);
+  fetch('forward.json',{cache:'no-store'}).then(function(r){return r.json()})
+    .then(function(j){FWD=j}).catch(function(){});
+}
+
+function showFwd(){
+  var bs=document.querySelectorAll('.tabs button');
+  for(var i=0;i<bs.length;i++) bs[i].className=(bs[i].getAttribute('data-tf')==='_fwd')?'on':'';
+  var el=document.getElementById('panes');
+  if(!FWD){ el.innerHTML='<div class="wrap">기록이 아직 없습니다. signal_log.py 가 1회 이상 실행되어야 합니다.</div>'; return; }
+  var html='<div class="note" style="margin-bottom:12px"><b>전진 검증이란</b> — 백테스트는 과거 데이터에 맞춰 규칙을 고른 결과라 낙관적일 수밖에 없습니다. '+
+   '여기 기록되는 신호는 <b>발생 시점에 저장</b>되고 이후 결과로 채점되므로 사후 조정이 불가능합니다. '+
+   '표본이 쌓일수록 백테스트 수치와 비교해 과최적화 여부를 판단할 수 있습니다.</div>';
+  Object.keys(FWD.summary).forEach(function(tf){
+    var s2=FWD.summary[tf];
+    html+='<div class="wrap"><h2>'+s2.ko+'</h2><div class="sub">기록 시작 '+(s2.since||'—')+
+      ' · 총 '+s2.total+'건 (확정 '+s2.done+' / 진행중 '+s2.open+')</div>';
+    if(s2.rules.length){
+      html+='<table><thead><tr><th>규칙</th><th>표본</th><th>승률</th><th>순기대</th><th>t</th>'+
+        '<th>PF</th><th>평균MAE</th><th>백테스트 대비</th></tr></thead><tbody>';
+      s2.rules.forEach(function(r){
+        var bt=null;
+        if(D&&D.results[tf]) bt=D.results[tf].filter(function(x){return x.key===r.key})[0];
+        var diff = bt? (r.net - bt.net) : null;
+        html+='<tr><td>'+r.ko+'</td><td>'+r.n+'</td><td>'+f(r.winrate,1)+'%</td>'+
+          '<td class="'+cls(r.net)+'"><b>'+sg(r.net)+'%</b></td>'+
+          '<td>'+f(r.tstat_net)+'</td><td>'+(r.pf?f(r.pf):'—')+'</td>'+
+          '<td class="d">'+f(r.avg_mae)+'%</td>'+
+          '<td class="'+cls(diff)+'">'+(diff!=null?sg(diff)+'%p':'—')+'</td></tr>';
+      });
+      html+='</tbody></table>';
+    } else html+='<div class="sub">확정된 표본이 부족합니다.</div>';
+    if(s2.recent&&s2.recent.length){
+      html+='<div class="sub" style="margin-top:10px">최근 신호</div><table style="min-width:600px"><tbody>';
+      s2.recent.forEach(function(r){
+        var st = r.done? (r.ret>0?'<span class="u">+'+f(r.ret)+'%</span>':'<span class="d">'+f(r.ret)+'%</span>')
+                       : '<span class="n">진행중 '+(r.unrealized!=null?sg(r.unrealized)+'%':'')+'</span>';
+        html+='<tr><td>'+r.at+'</td><td style="text-align:left">'+(r.key||'')+'</td>'+
+          '<td>'+(r.side>0?'<span class="side l">롱</span>':'<span class="side s">숏</span>')+'</td>'+
+          '<td>'+(r.entry?r.entry.toLocaleString():'')+'</td><td>'+st+'</td></tr>';
+      });
+      html+='</tbody></table>';
+    }
+    html+='</div>';
+  });
+  el.innerHTML=html;
 }
 
 function show(tf){
@@ -134,25 +208,29 @@ function show(tf){
       '<td><span class="side '+s[1]+'">'+s[0]+'</span>'+r.ko+'</td>'+
       '<td>'+r.n+'</td>'+
       '<td>'+f(r.winrate,1)+'%</td>'+
-      '<td class="'+cls(r.avg)+'">'+sg(r.avg)+'%</td>'+
-      '<td class="d">-'+f(r.cost)+'%</td>'+
       '<td class="'+cls(r.net)+'"><b>'+sg(r.net)+'%</b></td>'+
-      '<td class="'+(Math.abs(r.tstat_net)>2?cls(r.tstat_net):'n')+'">'+f(r.tstat_net)+'</td>'+
-      '<td class="u">'+sg(r.avg_win)+'%</td>'+
-      '<td class="d">'+f(r.avg_loss)+'%</td>'+
+      '<td class="'+(Math.abs(r.tstat_net)>=r.bonf_t?cls(r.tstat_net):'n')+'">'+f(r.tstat_net)+'</td>'+
+      '<td class="'+(r.is?cls(r.is.net):'n')+'">'+(r.is?sg(r.is.net)+'% <span class="split">('+r.is.n+')</span>':'—')+'</td>'+
+      '<td class="'+(r.oos?cls(r.oos.net):'n')+'">'+(r.oos?sg(r.oos.net)+'% <span class="split">('+r.oos.n+')</span>':'—')+'</td>'+
+      '<td class="'+(r.regimes.bull?cls(r.regimes.bull.net):'n')+'">'+(r.regimes.bull?sg(r.regimes.bull.net)+'% <span class="split">('+r.regimes.bull.n+')</span>':'—')+'</td>'+
+      '<td class="'+(r.regimes.bear?cls(r.regimes.bear.net):'n')+'">'+(r.regimes.bear?sg(r.regimes.bear.net)+'% <span class="split">('+r.regimes.bear.n+')</span>':'—')+'</td>'+
       '<td>'+(r.pf?f(r.pf):'—')+'</td>'+
       '<td class="d">'+f(r.avg_mae)+'%</td>'+
       '<td class="d">'+f(r.mdd,1)+'%</td>'+
-      '<td>'+f(r.avg_bars,1)+'</td>'+
       '<td><span class="vb '+r.verdict+'">'+r.verdict+'</span></td>'+
       '</tr>';
   }).join('');
   document.getElementById('panes').innerHTML=
     '<div class="wrap"><h2>'+m.ko+'</h2>'+
-    '<div class="sub">'+m.from+' ~ '+m.to+' · '+m.bars.toLocaleString()+'봉 · 최대 보유 '+m.hold+'봉</div>'+
+    '<div class="sub">'+m.from+' ~ '+m.to+' · '+m.bars.toLocaleString()+'봉 · 최대 보유 '+m.hold+'봉'+
+    ' · 학습/검증 분할일 '+m.split_date+' · 보정 t 기준 '+f(m.bonf_t)+'</div>'+
+    (m.control?'<div class="ctrl"><b>무작위 대조군</b> — 같은 손절·익절로 아무 시점에나 '+
+      m.control.n+'회 진입 시 순기대값 <span class="'+cls(m.control.net)+'">'+sg(m.control.net,3)+
+      '%</span>, 승률 '+f(m.control.winrate,1)+'%. 규칙은 이 값을 넘어야 의미가 있습니다.</div>':'')+
     '<table><thead><tr>'+
-    '<th>규칙</th><th>표본</th><th>승률</th><th>총기대</th><th>비용</th><th>순기대</th><th>t</th>'+
-    '<th>평균익</th><th>평균손</th><th>PF</th><th>평균MAE</th><th>누적MDD</th><th>평균봉</th><th>판정</th>'+
+    '<th>규칙</th><th>표본</th><th>승률</th><th>순기대</th><th>t</th>'+
+    '<th>학습70%</th><th>검증30%</th><th>상승장</th><th>하락장</th>'+
+    '<th>PF</th><th>평균MAE</th><th>누적MDD</th><th>판정</th>'+
     '</tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 </script>

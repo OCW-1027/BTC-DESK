@@ -43,6 +43,11 @@ jobs:
       - name: 데이터 수집
         run: python fetch_btc.py
 
+      # 백테스트는 주 1회(일요일 UTC 22:00)만. 캐시가 있어 평소엔 빠름.
+      - name: 백테스트 (주 1회)
+        if: github.event.schedule == '0 22 * * *' || github.event_name == 'workflow_dispatch'
+        run: python backtest.py && cp data/backtest.json static/backtest.json
+
       - name: 페이지 생성
         run: python build_page.py
 

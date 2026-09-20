@@ -101,6 +101,48 @@ button.mini{padding:4px 8px;font-size:10px;white-space:nowrap}
 .chk:last-child{border-bottom:0}
 .chk .mk{flex:0 0 16px;font-weight:800}
 .chk .ds{color:var(--faint);font-size:10.5px}
+
+.guide{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+ margin-bottom:12px;overflow:hidden}
+.guide summary{padding:10px 14px;cursor:pointer;font-size:12.5px;font-weight:700;
+ color:var(--amber);list-style:none;user-select:none}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::before{content:'▸ ';font-size:11px}
+.guide[open] summary::before{content:'▾ '}
+.guide summary:hover{background:var(--surface2)}
+.gbody{padding:4px 14px 14px;border-top:1px solid var(--line)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin:12px 0}
+.step{display:flex;gap:9px;min-width:0}
+.sn{flex:0 0 22px;height:22px;border-radius:50%;background:var(--amber);color:#2a1f05;
+ font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
+.sc{flex:1;min-width:0;font-size:12px;line-height:1.65}
+.sc > b{color:var(--text);font-size:12.5px;display:block;margin-bottom:4px}
+.sc p b,.ord b{color:var(--text);font-weight:700}
+.sc p{color:var(--muted);margin-bottom:5px}
+.sc u{text-decoration:none;border-bottom:1px solid var(--faint)}
+.warnline{color:var(--down)!important}
+.hl{background:rgba(255,178,36,.10);border-left:2px solid var(--amber);
+ padding:7px 10px;border-radius:0 5px 5px 0;color:var(--text)!important;
+ word-break:normal;overflow-wrap:anywhere;line-height:1.7}
+.hl b{display:inline!important}
+.ord{margin:5px 0 7px 17px;color:var(--muted);font-size:12px;line-height:1.85}
+.kbd{background:var(--surface2);border:1px solid var(--line);border-radius:4px;
+ padding:1px 6px;font-size:11px;color:var(--text)}
+.ok{color:var(--up);font-weight:700}
+.bad{color:var(--down);font-weight:700}
+.gsplit{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;
+ padding-top:12px;border-top:1px solid #21262d}
+.gcol{min-width:0;overflow:hidden}
+.gcol b{font-size:12.5px;display:block;margin-bottom:7px}
+.gtbl{width:100%;min-width:0;border-collapse:collapse;font-size:11.5px;table-layout:fixed}
+.gtbl td{text-align:left;padding:4px 6px;border-bottom:1px solid #21262d;color:var(--muted);
+ vertical-align:top;word-break:keep-all;overflow-wrap:anywhere}
+.gtbl td:first-child{color:var(--text);font-weight:600;width:42%;word-break:keep-all}
+.gtbl tr:last-child td{border-bottom:0}
+.gtbl.ex td:first-child{width:22%}
+.gtbl td:first-child{text-align:left}
+.note2{font-size:11px;color:var(--faint);margin-top:7px;line-height:1.6}
+@media(max-width:560px){.gtbl td:first-child{width:auto}}
 footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;line-height:1.7}
 @media(max-width:560px){.px{font-size:25px}.cons{margin-left:0}}
 </style>
@@ -115,6 +157,71 @@ footer{color:var(--faint);font-size:10.5px;margin-top:14px;text-align:center;lin
   <span class="lang"><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></span>
   <span class="meta" id="meta">불러오는 중…</span>
 </header>
+
+
+<!-- ══════════ 사용 가이드 ══════════ -->
+<details class="guide" id="guide">
+  <summary id="gSum">📘 사용법 — 위에서 아래로 3단계</summary>
+  <div class="gbody">
+    <div class="steps">
+      <div class="step">
+        <div class="sn">1</div>
+        <div class="sc">
+          <b id="g1t">방향 확인 — 매트릭스</b>
+          <p id="g1a"><b>일목 열</b>에서 1시간·4시간·일봉이 <u>모두 같은 쪽</u>이면 방향이 있는 것입니다. 섞여 있으면 진입하지 않습니다.</p>
+          <p id="g1b">우상단 <b>종합 %</b>가 +25% 이상이면 상승 우위, −25% 이하면 하락 우위입니다.</p>
+          <p class="warnline" id="g1c">⚠ 1분·15분은 방향 판단에 쓰지 마십시오. 백테스트에서 15분봉은 <u>모든 규칙이 비용 차감 후 마이너스</u>였습니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="sn">2</div>
+        <div class="sc">
+          <b id="g2t">레벨 확인 — 타임프레임 카드</b>
+          <p id="g2a">방향을 정한 타임프레임 카드에서 <b>손절 자리</b>를 봅니다. 롱이면 「손절 · 롱」, 숏이면 「손절 · 숏」 값입니다.</p>
+          <p id="g2b">ATR×1.5 거리라 일상적인 흔들림에는 걸리지 않습니다.</p>
+          <p id="g2c"><b>R</b>은 손절까지의 거리입니다. 1R 도달 = 잃을 뻔한 만큼 벌었다는 뜻입니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="sn">3</div>
+        <div class="sc">
+          <b id="g3t">크기 결정 — 계산기</b>
+          <p id="g3a">아래 순서로 5번만 누르면 됩니다.</p>
+          <ol class="ord">
+            <li id="g3l1">증거금에 <b>실제 넣을 금액</b> 입력</li>
+            <li id="g3l2">방향 선택 (롱/숏)</li>
+            <li id="g3l3"><span class="kbd">현재가</span> 버튼 클릭</li>
+            <li id="g3l4"><span class="kbd">ATR</span> 버튼 클릭 → 손절가 자동 입력</li>
+            <li id="g3l5"><b>레버리지를 줄여가며</b> 체크리스트가 <span class="ok">8/8</span>이 되는 값을 찾기</li>
+          </ol>
+          <p class="hl" id="g3b">5번이 핵심입니다. 8/8이 되는 레버리지가 <u>지금 변동성에서 이 손절을 감당할 수 있는 상한</u>입니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="gsplit">
+      <div class="gcol">
+        <b id="gRt">🔴 빨간색이 뜨는 조건</b>
+        <table class="gtbl">
+          <tr><td id="gr1">청산까지 5% 미만</td><td id="gr1d">하루 변동폭 안에 청산가가 들어옴</td></tr>
+          <tr><td id="gr2">손실이 증거금 30% 초과</td><td id="gr2d">한 번 손절에 3분의 1이 사라짐</td></tr>
+          <tr><td id="gr3">ATR 대비 1배 미만</td><td id="gr3d">손절이 너무 좁아 노이즈에 털림</td></tr>
+          <tr><td id="gr4">체크리스트 3개 이상 실패</td><td id="gr4d">박스 전체가 붉어짐</td></tr>
+        </table>
+        <p class="note2" id="gr5">청산가·손실액은 조건과 무관하게 항상 빨갛습니다. 잃는 쪽 숫자라 색으로 구분한 것입니다.</p>
+      </div>
+      <div class="gcol">
+        <b id="gEt">📐 예시 — 증거금 720, 4시간 롱</b>
+        <table class="gtbl ex">
+          <tr><td>20x</td><td class="bad" id="ge1">청산까지 4.6% · 6/8 · 빨강</td></tr>
+          <tr><td>10x</td><td class="ok" id="ge2">청산까지 9.6% · 8/8 · 초록</td></tr>
+        </table>
+        <p class="hl" id="ge3">→ 720 증거금에 <b>10배가 상한</b>. 그보다 높이면 방향이 맞아도 중간에 잘릴 확률이 올라갑니다.</p>
+        <p class="note2" id="ge4">이 도구는 「들어가라」고 말하지 않습니다. 방향은 1단계에서 직접 판단하시고, 계산기는 그 판단이 틀렸을 때 얼마나 잃을지를 미리 보여줄 뿐입니다.</p>
+      </div>
+    </div>
+  </div>
+</details>
 
 <div class="hero">
   <div>
@@ -230,6 +337,59 @@ var T = {
 };
 function t(k) { return T[LANG][k]; }
 
+var GUIDE_L={
+ ko:{gSum:'📘 사용법 — 위에서 아래로 3단계',
+  g1t:'방향 확인 — 매트릭스',
+  g1a:'<b>일목 열</b>에서 1시간·4시간·일봉이 <u>모두 같은 쪽</u>이면 방향이 있는 것입니다. 섞여 있으면 진입하지 않습니다.',
+  g1b:'우상단 <b>종합 %</b>가 +25% 이상이면 상승 우위, −25% 이하면 하락 우위입니다.',
+  g1c:'⚠ 1분·15분은 방향 판단에 쓰지 마십시오. 백테스트에서 15분봉은 <u>모든 규칙이 비용 차감 후 마이너스</u>였습니다.',
+  g2t:'레벨 확인 — 타임프레임 카드',
+  g2a:'방향을 정한 타임프레임 카드에서 <b>손절 자리</b>를 봅니다. 롱이면 「손절 · 롱」, 숏이면 「손절 · 숏」 값입니다.',
+  g2b:'ATR×1.5 거리라 일상적인 흔들림에는 걸리지 않습니다.',
+  g2c:'<b>R</b>은 손절까지의 거리입니다. 1R 도달 = 잃을 뻔한 만큼 벌었다는 뜻입니다.',
+  g3t:'크기 결정 — 계산기', g3a:'아래 순서로 5번만 누르면 됩니다.',
+  g3l1:'증거금에 <b>실제 넣을 금액</b> 입력', g3l2:'방향 선택 (롱/숏)',
+  g3l3:'<span class="kbd">현재가</span> 버튼 클릭',
+  g3l4:'<span class="kbd">ATR</span> 버튼 클릭 → 손절가 자동 입력',
+  g3l5:'<b>레버리지를 줄여가며</b> 체크리스트가 <span class="ok">8/8</span>이 되는 값을 찾기',
+  g3b:'5번이 핵심입니다. 8/8이 되는 레버리지가 <u>지금 변동성에서 이 손절을 감당할 수 있는 상한</u>입니다.',
+  gRt:'🔴 빨간색이 뜨는 조건',
+  gr1:'청산까지 5% 미만', gr1d:'하루 변동폭 안에 청산가가 들어옴',
+  gr2:'손실이 증거금 30% 초과', gr2d:'한 번 손절에 3분의 1이 사라짐',
+  gr3:'ATR 대비 1배 미만', gr3d:'손절이 너무 좁아 노이즈에 털림',
+  gr4:'체크리스트 3개 이상 실패', gr4d:'박스 전체가 붉어짐',
+  gr5:'청산가·손실액은 조건과 무관하게 항상 빨갛습니다. 잃는 쪽 숫자라 색으로 구분한 것입니다.',
+  gEt:'📐 예시 — 증거금 720, 4시간 롱',
+  ge1:'청산까지 4.6% · 6/8 · 빨강', ge2:'청산까지 9.6% · 8/8 · 초록',
+  ge3:'→ 720 증거금에 <b>10배가 상한</b>. 그보다 높이면 방향이 맞아도 중간에 잘릴 확률이 올라갑니다.',
+  ge4:'이 도구는 「들어가라」고 말하지 않습니다. 방향은 1단계에서 직접 판단하시고, 계산기는 그 판단이 틀렸을 때 얼마나 잃을지를 미리 보여줄 뿐입니다.'},
+ jp:{gSum:'📘 使い方 — 上から下へ3ステップ',
+  g1t:'方向の確認 — マトリクス',
+  g1a:'<b>一目の列</b>で1時間・4時間・日足が<u>すべて同じ側</u>なら方向があります。混在ならエントリーしません。',
+  g1b:'右上の<b>総合%</b>が+25%以上で上昇優勢、−25%以下で下降優勢です。',
+  g1c:'⚠ 1分・15分は方向判断に使わないでください。バックテストで15分足は<u>全ルールがコスト差引後マイナス</u>でした。',
+  g2t:'レベルの確認 — タイムフレームカード',
+  g2a:'方向を決めたTFのカードで<b>損切り位置</b>を見ます。ロングなら「損切り・ロング」、ショートなら「損切り・ショート」の値です。',
+  g2b:'ATR×1.5の距離なので通常の揺れには掛かりません。',
+  g2c:'<b>R</b>は損切りまでの距離です。1R到達 = 失うはずだった分だけ得た、という意味です。',
+  g3t:'サイズの決定 — 計算機', g3a:'以下の順に5回押すだけです。',
+  g3l1:'証拠金に<b>実際に入れる金額</b>を入力', g3l2:'方向を選択 (ロング/ショート)',
+  g3l3:'<span class="kbd">現在値</span> ボタンをクリック',
+  g3l4:'<span class="kbd">ATR</span> ボタンをクリック → 損切り価格が自動入力',
+  g3l5:'<b>レバレッジを下げながら</b>チェックリストが<span class="ok">8/8</span>になる値を探す',
+  g3b:'5番が核心です。8/8になるレバレッジが<u>今のボラティリティでこの損切りを耐えられる上限</u>です。',
+  gRt:'🔴 赤くなる条件',
+  gr1:'清算まで5%未満', gr1d:'一日の変動幅内に清算価格が入る',
+  gr2:'損失が証拠金の30%超', gr2d:'一度の損切りで3分の1が消える',
+  gr3:'ATR比1倍未満', gr3d:'損切りが狭すぎてノイズで刈られる',
+  gr4:'チェックリスト3つ以上失敗', gr4d:'ボックス全体が赤くなる',
+  gr5:'清算価格・損失額は条件に関わらず常に赤です。失う側の数字なので色で区別しています。',
+  gEt:'📐 例 — 証拠金720、4時間ロング',
+  ge1:'清算まで4.6% · 6/8 · 赤', ge2:'清算まで9.6% · 8/8 · 緑',
+  ge3:'→ 証拠金720なら<b>10倍が上限</b>。それ以上は方向が合っていても途中で切られる確率が上がります。',
+  ge4:'このツールは「入れ」とは言いません。方向は1段階目でご自身が判断し、計算機はその判断が外れた時にいくら失うかを先に示すだけです。'}
+};
+
 var CLBL={ko:{h2calc:'포지션 계산기',lbMargin:'증거금',lbLev:'레버리지',lbSide:'방향',
  lbEntry:'진입가',lbSL:'손절가',lbMMR:'유지증거금률 %',lbTFsrc:'기준 TF',btnMkt:'현재가',btnAtr:'ATR'},
  jp:{h2calc:'ポジション計算機',lbMargin:'証拠金',lbLev:'レバレッジ',lbSide:'方向',
@@ -251,6 +411,8 @@ function setLang(L) {
     .forEach(function (k) { var e = document.getElementById(k); if (e) e.textContent = t(k); });
   var cl=CLBL[L]||CLBL.ko;
   Object.keys(cl).forEach(function(k){var e=document.getElementById(k); if(e) e.textContent=cl[k];});
+  var gl=GUIDE_L[L]||GUIDE_L.ko;
+  Object.keys(gl).forEach(function(k){var e=document.getElementById(k); if(e) e.innerHTML=gl[k];});
   if (LAST) render(LAST);
 }
 

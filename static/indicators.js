@@ -137,11 +137,17 @@
     var hl2 = (h[h.length - 1] + l[l.length - 1]) / 2;
     var slL = hl2 - mult * a, slS = hl2 + mult * a;
     var R = px - slL;
+    var Rs = slS - px;   // 숏 기준 1R (손절까지 거리)
     return {
       atr: a, mult: mult,
-      longSL: slL, shortSL: slS, R: R,
+      longSL: slL, shortSL: slS,
+      R: R, longR: R, shortR: Rs,
+      // 롱: 위로, 숏: 아래로
       tp: [1, 1.75, 2.5].map(function (r) {
         return { rr: r, price: px + R * r, pct: (R * r) / px * 100 };
+      }),
+      tpShort: [1, 1.75, 2.5].map(function (r) {
+        return { rr: r, price: px - Rs * r, pct: (Rs * r) / px * 100 };
       })
     };
   }

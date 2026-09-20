@@ -212,7 +212,7 @@ var T = {
         matrix:'타임프레임 정렬 매트릭스',
         cloud:'일목 구름', bull:'양운', bear:'음운',
         bb:'볼린저 상/중/하', macdSig:'MACD / 시그널',
-        sl:'ATR 손절 (롱)', tp:'TP1 / TP2 / TP3',
+        slL:'손절 · 롱 (ATR×1.5)', slS:'손절 · 숏 (ATR×1.5)', tpL:'롱 목표 1R/1.75R/2.5R', tpS:'숏 목표 1R/1.75R/2.5R', rnote:'R = 손절까지 거리',
         dayRsi:'일봉 RSI', pctb:'볼린저 %B', basis:' JST 기준',
         foot1:'데이터 OKX · 브라우저에서 직접 계산되므로 항상 최신입니다',
         foot2:'정보 제공 목적이며 투자 자문이 아닙니다. 파생상품은 원금 전액 손실이 가능합니다.' },
@@ -223,7 +223,7 @@ var T = {
         matrix:'タイムフレーム整列マトリクス',
         cloud:'一目 雲', bull:'陽転', bear:'陰転',
         bb:'ボリンジャー 上/中/下', macdSig:'MACD / シグナル',
-        sl:'ATR 損切り (ロング)', tp:'TP1 / TP2 / TP3',
+        slL:'損切り・ロング (ATR×1.5)', slS:'損切り・ショート (ATR×1.5)', tpL:'ロング目標 1R/1.75R/2.5R', tpS:'ショート目標 1R/1.75R/2.5R', rnote:'R = 損切りまでの距離',
         dayRsi:'日足 RSI', pctb:'ボリンジャー %B', basis:' JST 基準',
         foot1:'データ OKX · ブラウザで直接計算するため常に最新です',
         foot2:'情報提供目的であり投資助言ではありません。デリバティブは元本全損の可能性があります。' }
@@ -402,9 +402,12 @@ function render(results) {
            '<div class="bar"><i style="width:' + Math.max(0, Math.min(100, b.pctB * 100)) + '%"></i></div>' : '') +
       (a.macd ? '<div class="kv"><span>' + t('macdSig') + '</span><span>' + sg(a.macd.macd, 0) + ' / ' +
                 sg(a.macd.signal, 0) + '</span></div>' : '') +
-      (rr ? '<div class="kv"><span>' + t('sl') + '</span><span class="d">' + n(rr.longSL) + '</span></div>' +
-            '<div class="kv"><span>' + t('tp') + '</span><span class="u">' +
-            rr.tp.map(function (t) { return n(t.price); }).join(' / ') + '</span></div>' : '') +
+      (rr ? '<div class="kv"><span>' + t('slL') + '</span><span class="d">' + n(rr.longSL) + '</span></div>' +
+            '<div class="kv"><span>' + t('tpL') + '</span><span class="u">' +
+            rr.tp.map(function (x) { return n(x.price); }).join(' / ') + '</span></div>' +
+            '<div class="kv"><span>' + t('slS') + '</span><span class="d">' + n(rr.shortSL) + '</span></div>' +
+            '<div class="kv"><span>' + t('tpS') + '</span><span class="u">' +
+            rr.tpShort.map(function (x) { return n(x.price); }).join(' / ') + '</span></div>' : '') +
       '</div>';
   });
   document.getElementById('cards').innerHTML = cards;
@@ -579,10 +582,10 @@ function calc(){
     [1,1.5,2,3].forEach(function(k){
       var tp=isL? E+slDist*k : E-slDist*k;
       var prof=slDist*k*qty;
-      rr+='<div class="orow"><span>R:R '+k+'</span><b class="u">'+f0(tp)+'  (+'+f0(prof)+')</b></div>';
+      rr+='<div class="orow"><span>'+k+'R</span><b class="u">'+f0(tp)+'  (+'+f0(prof)+')</b></div>';
     });
   } else rr='<div class="orow"><span>'+(LANG==='ko'?'손절가를 입력하세요':'損切り価格を入力')+'</span><b>—</b></div>';
-  var box2='<div class="obox"><h3>'+(LANG==='ko'?'목표가 (손절폭 배수)':'目標値 (損切り幅の倍数)')+'</h3>'+rr+'</div>';
+  var box2='<div class="obox"><h3>'+(LANG==='ko'?'목표가 — R 배수 (R = 손절까지 거리)':'目標値 — R倍 (R = 損切りまでの距離)')+'</h3>'+rr+'</div>';
 
   // 주요 레벨 도달 시 손익
   var lv='';

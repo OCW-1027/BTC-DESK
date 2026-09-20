@@ -48,6 +48,10 @@ jobs:
         if: github.event.schedule == '0 22 * * *' || github.event_name == 'workflow_dispatch'
         run: python backtest.py && cp data/backtest.json static/backtest.json
 
+      # 신호 로거: 매 실행마다 신호 기록 + 확정분 채점 (전진 검증)
+      - name: 신호 기록
+        run: python signal_log.py && cp data/forward.json static/forward.json
+
       - name: 페이지 생성
         run: python build_page.py
 

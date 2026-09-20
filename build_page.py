@@ -194,7 +194,7 @@ footer{{color:#484f58;font-size:10.5px;margin-top:16px;text-align:center;line-he
 <header>
   <div><h1>₿ BTC Desk</h1>
   <div class="meta">{T['updated']['ko']} {m['generated_at_jst']} · OKX / Deribit / Alternative.me</div></div>
-  <div class="lang"><a class="mtflink" href="mtf.html">멀티 TF ↗</a><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></div>
+  <div class="lang"><a class="mtflink" href="mtf.html">멀티 TF ↗</a><a class="mtflink" href="backtest.html">백테스트 ↗</a><button id="bko" class="on" onclick="setLang('ko')">한국어</button><button id="bjp" onclick="setLang('jp')">日本語</button></div>
 </header>
 
 <div class="hero">

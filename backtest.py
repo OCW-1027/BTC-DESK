@@ -364,15 +364,10 @@ def evaluate(d, hold_bars, sl_atr=1.5, tp_atr=3.0):
             for j in range(i + 1, min(end, i + bars) + 1):
                 adv = (d["l"][j] / entry - 1) * 100 if side > 0 else (d["h"][j] / entry - 1) * -100
                 mae = min(mae, adv)
-            r = res.setdefault(key, {"n": 0, "wins": 0, "rets": [], "maes": [],
-                                     "sl": 0, "tp": 0, "time": 0, "bars": []})
-            r["n"] += 1
-            r["rets"].append(ret)
-            r["maes"].append(mae)
-            r["bars"].append(bars)
-            r[how] += 1
-            if ret > 0:
-                r["wins"] += 1
+            res.setdefault(key, []).append({
+                "i": i, "t": d["t"][i], "ret": ret, "mae": mae,
+                "bars": bars, "how": how, "side": side,
+            })
     return res
 
 
@@ -381,87 +376,203 @@ FEE_ROUNDTRIP = 0.10   # %
 FUND_PER_8H = 0.01     # %
 
 
-def summarize(res, tf_key, tf_ko, hold_bars, hours_per_bar):
+def stats(trades, hours_per_bar):
+    """트레이드 리스트 -> 성과 지표. 표본이 적으면 None."""
+    if len(trades) < 5:
+        return None
+    rets = [t["ret"] for t in trades]
+    wins = [x for x in rets if x > 0]
+    loss = [x for x in rets if x <= 0]
+    avg = sum(rets) / len(rets)
+    sd = math.sqrt(sum((x - avg) ** 2 for x in rets) / len(rets)) if len(rets) > 1 else 0
+    avg_bars = sum(t["bars"] for t in trades) / len(trades)
+    cost = FEE_ROUNDTRIP + FUND_PER_8H * (avg_bars * hours_per_bar / 8.0)
+    net = avg - cost
+    tnet = (net / (sd / math.sqrt(len(rets)))) if sd > 0 else 0.0
+    cum, peak, mdd = 0.0, 0.0, 0.0
+    for x in rets:
+        cum += x; peak = max(peak, cum); mdd = min(mdd, cum - peak)
+    return {
+        "n": len(rets),
+        "winrate": len(wins) / len(rets) * 100,
+        "avg": avg, "cost": cost, "net": net, "stdev": sd, "tstat_net": tnet,
+        "avg_win": (sum(wins) / len(wins)) if wins else 0,
+        "avg_loss": (sum(loss) / len(loss)) if loss else 0,
+        "pf": (sum(wins) / abs(sum(loss))) if loss and sum(loss) != 0 else None,
+        "mdd": mdd,
+        "avg_mae": sum(t["mae"] for t in trades) / len(trades),
+        "avg_bars": avg_bars,
+        "exit_sl": sum(1 for t in trades if t["how"] == "sl"),
+        "exit_tp": sum(1 for t in trades if t["how"] == "tp"),
+        "exit_time": sum(1 for t in trades if t["how"] == "time"),
+    }
+
+
+def regime_of(ts, regimes):
+    for r in regimes:
+        if r["from_ms"] <= ts <= r["to_ms"]:
+            return r["key"]
+    return None
+
+
+def summarize(res, tf_key, tf_ko, hold_bars, hours_per_bar, split_i, regimes, n_tests):
+    """학습(IS)/검증(OOS) 분할 + 국면별 분해 + 다중검정 보정."""
     out = []
-    for key, r in res.items():
-        rets = r["rets"]
-        if len(rets) < 8:      # 표본 부족은 제외
+    # 본페로니 보정 임계 t (양측 5% 기준 근사)
+    bonf_t = 1.96 + 0.62 * math.log(max(1, n_tests))
+    for key, trades in res.items():
+        if len(trades) < 8:
             continue
-        wins = [x for x in rets if x > 0]
-        loss = [x for x in rets if x <= 0]
-        avg = sum(rets) / len(rets)
-        srt = sorted(rets)
-        med = srt[len(srt) // 2]
-        aw = sum(wins) / len(wins) if wins else 0
-        al = sum(loss) / len(loss) if loss else 0
-        wr = len(wins) / len(rets) * 100
-        pf = (sum(wins) / abs(sum(loss))) if loss and sum(loss) != 0 else None
-        sd = math.sqrt(sum((x - avg) ** 2 for x in rets) / len(rets)) if len(rets) > 1 else 0
-        # 누적 곡선 최대 낙폭
-        cum, peak, mdd = 0.0, 0.0, 0.0
-        for x in rets:
-            cum += x
-            peak = max(peak, cum)
-            mdd = min(mdd, cum - peak)
+        allst = stats(trades, hours_per_bar)
+        if not allst:
+            continue
+        is_t = [t for t in trades if t["i"] <= split_i]
+        oos_t = [t for t in trades if t["i"] > split_i]
+        st_is = stats(is_t, hours_per_bar)
+        st_oos = stats(oos_t, hours_per_bar)
+
+        # 국면별
+        reg = {}
+        for r in regimes:
+            spans = r.get("spans") or [[r["from_ms"], r["to_ms"]]]
+            sub = [t for t in trades
+                   if any(a <= t["t"] <= b for a, b in spans)]
+            sr = stats(sub, hours_per_bar)
+            if sr:
+                reg[r["key"]] = {"n": sr["n"], "net": sr["net"],
+                                 "winrate": sr["winrate"], "tstat_net": sr["tstat_net"]}
+
+        # 판정: OOS 에서도 살아남고 보정 t 를 통과해야 '강'
+        v = "무"
+        if allst["net"] > 0 and allst["tstat_net"] >= bonf_t and st_oos and st_oos["net"] > 0:
+            v = "강"
+        elif allst["net"] > 0 and allst["tstat_net"] >= 1.96:
+            v = "약" if (st_oos and st_oos["net"] > 0) else "과최적화"
+        elif allst["net"] > 0:
+            v = "무"
+        if st_is and st_oos and st_is["net"] > 0 and st_oos["net"] <= 0 and st_is["tstat_net"] >= 1.5:
+            v = "과최적화"
+
         ko, jp, side = RULE_META.get(key, (key, key, 0))
-        avg_bars = sum(r["bars"]) / len(r["bars"])
-        fund_cost = FUND_PER_8H * (avg_bars * hours_per_bar / 8.0)
-        cost = FEE_ROUNDTRIP + fund_cost
-        net = avg - cost
-        # 기대값이 0과 구분되는가 (t통계량)
-        tstat = (avg / (sd / math.sqrt(len(rets)))) if sd > 0 else 0.0
-        tstat_net = (net / (sd / math.sqrt(len(rets)))) if sd > 0 else 0.0
-        out.append({
-            "cost": cost, "net": net, "tstat": tstat, "tstat_net": tstat_net,
-            "verdict": ("강" if (net > 0 and tstat_net > 2 and len(rets) >= 30) else
-                        ("약" if (net > 0 and tstat_net > 1) else "무")),
-            "key": key, "ko": ko, "jp": jp, "side": side,
-            "tf": tf_key, "tf_ko": tf_ko,
-            "n": len(rets), "winrate": wr, "avg": avg, "median": med,
-            "avg_win": aw, "avg_loss": al,
-            "pf": pf, "expectancy": avg, "stdev": sd,
-            "mdd": mdd,
-            "avg_mae": sum(r["maes"]) / len(r["maes"]),
-            "exit_sl": r["sl"], "exit_tp": r["tp"], "exit_time": r["time"],
-            "avg_bars": sum(r["bars"]) / len(r["bars"]),
-            "hold": hold_bars,
-        })
+        row = {"key": key, "ko": ko, "jp": jp, "side": side,
+               "tf": tf_key, "tf_ko": tf_ko, "hold": hold_bars,
+               "verdict": v, "bonf_t": bonf_t,
+               "is": st_is, "oos": st_oos, "regimes": reg}
+        row.update(allst)
+        out.append(row)
     out.sort(key=lambda x: -x["net"])
     return out
+
+
+def random_control(d, hold_bars, hours_per_bar, n_sig, seed=42):
+    """같은 횟수만큼 무작위 시점에 진입했을 때의 성과 (대조군)."""
+    import random
+    rnd = random.Random(seed)
+    n = d["n"]
+    pool = [i for i in range(210, n - 1) if d["atr"][i]]
+    if len(pool) < 10:
+        return None
+    trades = []
+    for _ in range(min(n_sig * 5, 3000)):
+        i = rnd.choice(pool)
+        side = 1 if rnd.random() < 0.5 else -1
+        atr = d["atr"][i]; entry = d["o"][i + 1]
+        if not entry or not atr:
+            continue
+        sl = entry - side * atr * 1.5
+        tp = entry + side * atr * 3.0
+        exit_px, bars, how = None, 0, "time"
+        end = min(n - 1, i + 1 + hold_bars)
+        for j in range(i + 1, end + 1):
+            bars = j - i
+            if side > 0:
+                if d["l"][j] <= sl: exit_px, how = sl, "sl"; break
+                if d["h"][j] >= tp: exit_px, how = tp, "tp"; break
+            else:
+                if d["h"][j] >= sl: exit_px, how = sl, "sl"; break
+                if d["l"][j] <= tp: exit_px, how = tp, "tp"; break
+        if exit_px is None:
+            exit_px = d["c"][end]
+        trades.append({"i": i, "t": d["t"][i], "ret": (exit_px / entry - 1) * 100 * side,
+                       "mae": 0.0, "bars": bars, "how": how, "side": side})
+    return stats(trades, hours_per_bar)
+
+
+def detect_regimes(d):
+    """200SMA 기준으로 상승/하락 국면 분할."""
+    out, cur, start = [], None, None
+    for i in range(200, d["n"]):
+        m = d["sma200"][i]
+        if m is None:
+            continue
+        st = "bull" if d["c"][i] > m else "bear"
+        if cur is None:
+            cur, start = st, i
+        elif st != cur:
+            if i - start >= 30:
+                out.append({"key": cur, "from_ms": d["t"][start], "to_ms": d["t"][i - 1],
+                            "bars": i - start})
+                cur, start = st, i
+    if cur and start is not None and d["n"] - start >= 30:
+        out.append({"key": cur, "from_ms": d["t"][start], "to_ms": d["t"][d["n"] - 1],
+                    "bars": d["n"] - start})
+    # bull/bear 로 합산 (구간이 많아 개별 나열은 불필요)
+    merged = {}
+    for r in out:
+        m = merged.setdefault(r["key"], {"key": r["key"], "from_ms": r["from_ms"],
+                                         "to_ms": r["to_ms"], "bars": 0, "spans": []})
+        m["from_ms"] = min(m["from_ms"], r["from_ms"])
+        m["to_ms"] = max(m["to_ms"], r["to_ms"])
+        m["bars"] += r["bars"]
+        m["spans"].append([r["from_ms"], r["to_ms"]])
+    return out, list(merged.values())
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
     print("== 백테스트 시작 ==")
     all_res, meta = {}, {}
+    n_tests = len(RULE_META) * len(TFS)     # 다중검정 총 시험 횟수
     for bar, ko, need, per_day in TFS:
         cands = fetch(bar, need)
         if len(cands) < 300:
             print(f"  {bar}: 데이터 부족, 건너뜀")
             continue
         d = build(cands)
-        hold = max(6, per_day * 3)     # 약 3일 보유 상당
+        hold = max(6, per_day * 3)
+        hpb = {"15m": 0.25, "1H": 1, "4H": 4, "1D": 24}[bar]
+        split_i = int(d["n"] * 0.70)        # 앞 70% 학습 / 뒤 30% 검증
+        spans, regimes = detect_regimes(d)
         t0 = time.time()
         res = evaluate(d, hold)
-        hpb = {"15m": 0.25, "1H": 1, "4H": 4, "1D": 24}[bar]
-        rows = summarize(res, bar, ko, hold, hpb)
+        rows = summarize(res, bar, ko, hold, hpb, split_i, regimes, n_tests)
+        nsig = sum(len(v) for v in res.values()) // max(1, len(res))
+        ctrl = random_control(d, hold, hpb, max(50, nsig))
         all_res[bar] = rows
         meta[bar] = {
             "ko": ko, "bars": len(cands), "hold": hold,
             "from": datetime.fromtimestamp(cands[0][0] / 1000, timezone.utc).strftime("%Y-%m-%d"),
             "to": datetime.fromtimestamp(cands[-1][0] / 1000, timezone.utc).strftime("%Y-%m-%d"),
+            "split_date": datetime.fromtimestamp(d["t"][split_i] / 1000, timezone.utc).strftime("%Y-%m-%d"),
+            "control": ctrl,
+            "bonf_t": rows[0]["bonf_t"] if rows else None,
+            "regime_bars": {r["key"]: r["bars"] for r in regimes},
         }
-        print(f"  {bar}: 규칙 {len(rows)}개 평가 ({time.time()-t0:.1f}초)")
+        strong = [r for r in rows if r["verdict"] == "강"]
+        over = [r for r in rows if r["verdict"] == "과최적화"]
+        print(f"  {bar}: 규칙 {len(rows)}개 | 강 {len(strong)} | 과최적화 {len(over)} "
+              f"| 보정t {rows[0]['bonf_t']:.2f} ({time.time()-t0:.1f}초)" if rows else f"  {bar}: 없음")
 
     payload = {
         "generated_at_jst": datetime.now(JST).strftime("%Y-%m-%d %H:%M JST"),
         "params": {"sl_atr": 1.5, "tp_atr": 3.0, "entry": "next_bar_open",
-                   "fee_roundtrip": FEE_ROUNDTRIP, "funding_per_8h": FUND_PER_8H},
+                   "fee_roundtrip": FEE_ROUNDTRIP, "funding_per_8h": FUND_PER_8H,
+                   "split": 0.70, "n_tests": n_tests},
         "meta": meta, "results": all_res,
     }
     with open(os.path.join(OUT, "backtest.json"), "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"== 완료: data/backtest.json ==")
+    print("== 완료: data/backtest.json ==")
     return payload
 
 
